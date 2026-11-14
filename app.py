@@ -14,7 +14,7 @@ app = Flask(__name__, static_folder=".")
 # =============================================================================
 # 1. IN-MEMORY CACHE & CUSTOM LINKS STORAGE
 # =============================================================================
- API_CACHE = {}
+API_CACHE = {}
 CUSTOM_LINKS_FILE = "custom_anime_links.json"
 
 # Built-in Hindi Dub / Dual Audio Popular Anime IDs (AniList IDs)
