@@ -1,0 +1,1233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>FlyTon Anime — Watch & Download HD Anime</title>
+  <!-- Official Telegram Mini App SDK -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <!-- Google Fonts & Icons -->
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
+  <style>
+    :root {
+      --bg-main: #07080d;
+      --bg-elevated: #0f121c;
+      --glass-card: rgba(18, 22, 36, 0.78);
+      --glass-border: rgba(255, 255, 255, 0.09);
+      --blue-box-bg: rgba(0, 149, 255, 0.12);
+      --blue-box-border: #0095ff;
+      --primary: #ff2a5f;
+      --primary-glow: rgba(255, 42, 95, 0.45);
+      --secondary: #7c3aed;
+      --accent-cyan: #00e5ff;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --btn-gradient: linear-gradient(135deg, #e11d48 0%, #be123c 100%);
+      --radius-lg: 18px;
+      --radius-md: 12px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background-color: var(--bg-main);
+      background-image:
+        radial-gradient(circle at 10% 10%, rgba(124, 58, 237, 0.14), transparent 35%),
+        radial-gradient(circle at 90% 20%, rgba(255, 42, 95, 0.12), transparent 35%);
+      color: var(--text-main);
+      min-height: 100vh;
+      padding-bottom: 92px;
+      overflow-x: hidden;
+    }
+
+    /* TOP GLASS HEADER */
+    .app-header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: rgba(7, 8, 13, 0.82);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border-bottom: 1px solid var(--glass-border);
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+    }
+
+    .brand-logo {
+      width: 38px;
+      height: 38px;
+      border-radius: 11px;
+      object-fit: cover;
+      border: 1.5px solid var(--primary);
+      box-shadow: 0 0 12px var(--primary-glow);
+    }
+
+    .brand-title {
+      font-size: 1.2rem;
+      font-weight: 800;
+      letter-spacing: 0.3px;
+      background: linear-gradient(90deg, #ffffff, #ff6b8b, #a855f7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-sub {
+      font-size: 0.68rem;
+      color: var(--accent-cyan);
+      font-weight: 600;
+      display: block;
+      margin-top: -2px;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tg-join-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: linear-gradient(135deg, #0088cc, #005f8f);
+      color: #fff;
+      font-size: 0.76rem;
+      font-weight: 700;
+      padding: 7px 12px;
+      border-radius: 999px;
+      text-decoration: none;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 4px 14px rgba(0, 136, 204, 0.35);
+      cursor: pointer;
+    }
+
+    .icon-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: var(--glass-card);
+      border: 1px solid var(--glass-border);
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 0.95rem;
+    }
+
+    /* SPOTLIGHT HERO BANNER */
+    .hero-wrap {
+      position: relative;
+      margin: 14px 14px 20px;
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      min-height: 250px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--glass-border);
+      box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55);
+    }
+
+    .hero-bg {
+      position: absolute;
+      inset: 0;
+      background-size: cover;
+      background-position: center;
+      filter: brightness(0.55);
+      transition: background-image 0.5s ease;
+    }
+
+    .hero-overlay {
+      position: relative;
+      z-index: 2;
+      background: linear-gradient(180deg, rgba(7,8,13,0.15) 0%, rgba(7,8,13,0.88) 70%, #07080d 100%);
+      padding: 22px 16px 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      min-height: 250px;
+    }
+
+    .hero-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+
+    .badge {
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 4px 9px;
+      border-radius: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .badge-Trending {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .badge-dub {
+      background: rgba(0, 229, 255, 0.16);
+      color: var(--accent-cyan);
+      border: 1px solid rgba(0, 229, 255, 0.4);
+    }
+
+    .badge-quality {
+      background: rgba(124, 58, 237, 0.25);
+      color: #d8b4fe;
+      border: 1px solid rgba(124, 58, 237, 0.5);
+    }
+
+    .hero-title {
+      font-size: 1.45rem;
+      font-weight: 800;
+      line-height: 1.2;
+      margin-bottom: 6px;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+    }
+
+    .hero-meta {
+      font-size: 0.78rem;
+      color: #cbd5e1;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .hero-btns {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn-watch-hero {
+      flex: 1;
+      background: var(--btn-gradient);
+      color: #fff;
+      border: none;
+      padding: 11px 16px;
+      border-radius: 11px;
+      font-weight: 800;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      box-shadow: 0 6px 20px var(--primary-glow);
+    }
+
+    .btn-glass-hero {
+      background: rgba(255, 255, 255, 0.12);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 11px 14px;
+      border-radius: 11px;
+      font-weight: 700;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+
+    /* PRO BLUE QUOTE-BOX BANNER */
+    .blue-quote-box {
+      margin: 0 14px 18px;
+      padding: 11px 14px;
+      background: var(--blue-box-bg);
+      border-left: 4px solid var(--blue-box-border);
+      border-radius: 8px 12px 12px 8px;
+      font-size: 0.8rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .blue-quote-box b {
+      color: #38bdf8;
+    }
+
+    /* SECTION HEADERS & HORIZONTAL RAILS */
+    .section-block {
+      margin-bottom: 24px;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px 10px;
+    }
+
+    .section-title {
+      font-size: 1.05rem;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-title i {
+      color: var(--primary);
+    }
+
+    .section-more {
+      font-size: 0.75rem;
+      color: var(--accent-cyan);
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .rail-scroll {
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+      padding: 4px 16px 10px;
+      scroll-behavior: smooth;
+      scrollbar-width: none;
+    }
+
+    .rail-scroll::-webkit-scrollbar {
+      display: none;
+    }
+
+    /* ANIME POSTER CARD */
+    .anime-card {
+      flex: 0 0 136px;
+      background: var(--glass-card);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.2s ease, border-color 0.2s ease;
+      position: relative;
+    }
+
+    .anime-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--primary);
+    }
+
+    .poster-wrap {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 2 / 2.85;
+      background: #161926;
+      overflow: hidden;
+    }
+
+    .poster-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .card-score {
+      position: absolute;
+      top: 7px;
+      left: 7px;
+      background: rgba(7, 8, 13, 0.85);
+      color: #fbbf24;
+      font-size: 0.66rem;
+      font-weight: 800;
+      padding: 3px 6px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+
+    .card-ep-pill {
+      position: absolute;
+      bottom: 7px;
+      right: 7px;
+      background: var(--primary);
+      color: #fff;
+      font-size: 0.65rem;
+      font-weight: 800;
+      padding: 2px 7px;
+      border-radius: 5px;
+    }
+
+    .card-dub-pill {
+      position: absolute;
+      bottom: 7px;
+      left: 7px;
+      background: rgba(0, 229, 255, 0.9);
+      color: #000;
+      font-size: 0.6rem;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 5px;
+    }
+
+    .card-info {
+      padding: 8px 9px 10px;
+    }
+
+    .card-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 3px;
+    }
+
+    .card-sub {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* GRID VIEW FOR SEARCH / SCHEDULE / WATCHLIST */
+    .anime-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+      gap: 12px;
+      padding: 10px 16px;
+    }
+
+    .anime-grid .anime-card {
+      flex: unset;
+      width: 100%;
+    }
+
+    /* SEARCH & FILTER BAR */
+    .search-box-wrap {
+      padding: 14px 16px 8px;
+    }
+
+    .search-bar {
+      display: flex;
+      align-items: center;
+      background: var(--bg-elevated);
+      border: 1.5px solid var(--glass-border);
+      border-radius: 14px;
+      padding: 10px 14px;
+      gap: 10px;
+    }
+
+    .search-bar input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #fff;
+      font-family: inherit;
+      font-size: 0.92rem;
+    }
+
+    .genre-chips {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 10px 16px;
+      scrollbar-width: none;
+    }
+
+    .genre-chips::-webkit-scrollbar {
+      display: none;
+    }
+
+    .chip {
+      white-space: nowrap;
+      padding: 6px 13px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      background: var(--glass-card);
+      border: 1px solid var(--glass-border);
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+
+    .chip.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+
+    /* FULLSCREEN DETAIL & VIDEO PLAYER MODAL */
+    .detail-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      background: var(--bg-main);
+      overflow-y: auto;
+      display: none;
+      padding-bottom: 90px;
+    }
+
+    .detail-modal.open {
+      display: block;
+    }
+
+    .modal-top-bar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: rgba(7, 8, 13, 0.88);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--glass-border);
+    }
+
+    .player-container {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: #000;
+      position: relative;
+      border-bottom: 1px solid var(--glass-border);
+    }
+
+    .player-container iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+
+    .server-bar {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 10px 14px;
+      background: var(--bg-elevated);
+      border-bottom: 1px solid var(--glass-border);
+    }
+
+    .srv-btn {
+      white-space: nowrap;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 0.74rem;
+      font-weight: 700;
+      background: rgba(255,255,255,0.06);
+      color: var(--text-muted);
+      border: 1px solid var(--glass-border);
+      cursor: pointer;
+    }
+
+    .srv-btn.active {
+      background: var(--secondary);
+      color: #fff;
+      border-color: #a855f7;
+    }
+
+    /* TELEGRAM QUOTE-BOX STYLE DETAILS & 3 COLORFUL BUTTONS */
+    .tg-post-card {
+      margin: 14px;
+      padding: 14px;
+      background: var(--glass-card);
+      border: 1px solid var(--glass-border);
+      border-radius: 16px;
+    }
+
+    .tg-quote-header {
+      background: var(--blue-box-bg);
+      border-left: 4px solid var(--blue-box-border);
+      padding: 9px 12px;
+      border-radius: 6px 10px 10px 6px;
+      font-weight: 800;
+      font-size: 0.95rem;
+      color: #fff;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .tg-specs-list {
+      font-size: 0.84rem;
+      line-height: 1.7;
+      color: #e2e8f0;
+      padding: 6px 4px;
+      border-top: 1px dashed rgba(255,255,255,0.15);
+      border-bottom: 1px dashed rgba(255,255,255,0.15);
+      margin-bottom: 10px;
+    }
+
+    /* 3 COLORFUL TELEGRAM POST BUTTONS */
+    .tg-three-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin: 14px;
+    }
+
+    .tg-btn-main {
+      width: 100%;
+      background: linear-gradient(135deg, #c83e5b 0%, #a82845 100%);
+      color: #fff;
+      text-decoration: none;
+      padding: 13px;
+      border-radius: 12px;
+      font-weight: 800;
+      font-size: 0.9rem;
+      text-align: center;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      box-shadow: 0 6px 18px rgba(200, 62, 91, 0.4);
+      cursor: pointer;
+    }
+
+    .tg-btn-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .tg-btn-sub {
+      background: linear-gradient(135deg, #b83b56 0%, #93243c 100%);
+      color: #fff;
+      text-decoration: none;
+      padding: 11px 10px;
+      border-radius: 12px;
+      font-weight: 800;
+      font-size: 0.78rem;
+      text-align: center;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      cursor: pointer;
+    }
+
+    /* EPISODE NUMBER GRID */
+    .ep-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(62px, 1fr));
+      gap: 8px;
+      padding: 0 14px 16px;
+    }
+
+    .ep-pill {
+      padding: 9px 6px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--glass-border);
+      border-radius: 9px;
+      text-align: center;
+      font-weight: 700;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+
+    .ep-pill.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+
+    /* FLOATING BOTTOM NAVIGATION BAR */
+    .bottom-nav {
+      position: fixed;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: calc(100% - 28px);
+      max-width: 460px;
+      background: rgba(15, 18, 28, 0.92);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 22px;
+      display: flex;
+      justify-content: space-around;
+      padding: 8px 6px;
+      z-index: 150;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.75);
+    }
+
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      color: var(--text-muted);
+      font-size: 0.68rem;
+      font-weight: 700;
+      cursor: pointer;
+      padding: 4px 10px;
+      border-radius: 12px;
+      transition: all 0.2s ease;
+    }
+
+    .nav-item i {
+      font-size: 1.05rem;
+    }
+
+    .nav-item.active {
+      color: #fff;
+      background: rgba(255, 42, 95, 0.18);
+    }
+
+    .nav-item.active i {
+      color: var(--primary);
+    }
+
+    .view-page {
+      display: none;
+    }
+
+    .view-page.active {
+      display: block;
+    }
+
+    .footer-credit {
+      text-align: center;
+      padding: 20px 16px 10px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TOP GLASS HEADER -->
+  <header class="app-header">
+    <div class="brand-wrap" onclick="switchTab('home')">
+      <img id="appLogo" class="brand-logo" src="https://cdn-icons-png.flaticon.com/512/2503/2503508.png" alt="Logo" />
+      <div>
+        <span id="appName" class="brand-title">FlyTon Anime</span>
+        <span id="appChannelTag" class="brand-sub">@FlyTon_Anime</span>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="icon-btn" onclick="openRandomAnime()" title="Random Anime">
+        <i class="fa-solid fa-dice"></i>
+      </button>
+      <a id="headerJoinBtn" class="tg-join-pill" href="https://t.me/FlyTon_Anime" target="_blank">
+        <i class="fa-brands fa-telegram"></i> Join
+      </a>
+    </div>
+  </header>
+
+  <!-- VIEW 1: HOME -->
+  <main id="view-home" class="view-page active">
+    <!-- Hero Spotlight -->
+    <div class="hero-wrap" id="heroBanner">
+      <div class="hero-bg" id="heroBg"></div>
+      <div class="hero-overlay">
+        <div class="hero-badges">
+          <span class="badge badge-Trending">🔥 #1 Spotlight</span>
+          <span class="badge badge-dub" id="heroAudio">Hindi [Dual Audio]</span>
+          <span class="badge badge-quality">480p • 720p • 1080p</span>
+        </div>
+        <h1 class="hero-title" id="heroTitle">Loading Spotlight Anime...</h1>
+        <div class="hero-meta" id="heroMeta">
+          <span>⭐ 8.9</span>
+          <span>•</span>
+          <span>TV Series</span>
+        </div>
+        <div class="hero-btns">
+          <button class="btn-watch-hero" id="heroWatchBtn">
+            <i class="fa-solid fa-play"></i> WATCH & DOWNLOAD
+          </button>
+          <button class="btn-glass-hero" onclick="switchTab('search')">
+            <i class="fa-solid fa-magnifying-glass"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pro Blue Quote-Box Channel Banner -->
+    <div class="blue-quote-box">
+      <div>
+        <b>• Official Main Channel :</b> <span id="quoteChannelName">『@FlyTon_Anime』</span>
+      </div>
+      <span style="font-size:0.72rem; color:#94a3b8;">100% HD Dual Audio</span>
+    </div>
+
+    <!-- Hindi Dubbed Section -->
+    <section class="section-block">
+      <div class="section-header">
+        <div class="section-title"><i class="fa-solid fa-microphone-lines"></i> Hindi Dubbed Anime</div>
+        <span class="section-more" onclick="filterHindiDubs()">View All →</span>
+      </div>
+      <div class="rail-scroll" id="railHindi"></div>
+    </section>
+
+    <!-- Trending Section -->
+    <section class="section-block">
+      <div class="section-header">
+        <div class="section-title"><i class="fa-solid fa-fire"></i> Trending Now</div>
+        <span class="section-more" onclick="switchTab('search')">Explore →</span>
+      </div>
+      <div class="rail-scroll" id="railTrending"></div>
+    </section>
+
+    <!-- Top Airing Section -->
+    <section class="section-block">
+      <div class="section-header">
+        <div class="section-title"><i class="fa-solid fa-tower-broadcast"></i> Currently Airing</div>
+        <span class="section-more" onclick="switchTab('schedule')">Schedule →</span>
+      </div>
+      <div class="rail-scroll" id="railAiring"></div>
+    </section>
+
+    <!-- Popular Movies Section -->
+    <section class="section-block">
+      <div class="section-header">
+        <div class="section-title"><i class="fa-solid fa-film"></i> Popular Anime Movies</div>
+      </div>
+      <div class="rail-scroll" id="railMovies"></div>
+    </section>
+
+    <div class="footer-credit" id="footerCredit">
+      ⚡ Powered by FlyTon Anime Official • @FlyTon_Anime
+    </div>
+  </main>
+
+  <!-- VIEW 2: SEARCH & GENRE FILTER -->
+  <section id="view-search" class="view-page">
+    <div class="search-box-wrap">
+      <div class="search-bar">
+        <i class="fa-solid fa-magnifying-glass" style="color:var(--text-muted)"></i>
+        <input type="text" id="searchInput" placeholder="Search Solo Leveling, Demon Slayer, JoJo..." oninput="debounceSearch()" />
+      </div>
+    </div>
+    <div class="genre-chips" id="genreChips">
+      <span class="chip active" onclick="selectGenre('ALL', this)">All Anime</span>
+      <span class="chip" onclick="selectGenre('HINDI', this)">🇮🇳 Hindi Dub</span>
+      <span class="chip" onclick="selectGenre('Action', this)">Action</span>
+      <span class="chip" onclick="selectGenre('Adventure', this)">Adventure</span>
+      <span class="chip" onclick="selectGenre('Fantasy', this)">Fantasy</span>
+      <span class="chip" onclick="selectGenre('Supernatural', this)">Supernatural</span>
+      <span class="chip" onclick="selectGenre('Romance', this)">Romance</span>
+      <span class="chip" onclick="selectGenre('Sci-Fi', this)">Sci-Fi</span>
+    </div>
+    <div class="anime-grid" id="searchGrid"></div>
+  </section>
+
+  <!-- VIEW 3: AIRING SCHEDULE CALENDAR -->
+  <section id="view-schedule" class="view-page">
+    <div class="section-header" style="padding-top:16px;">
+      <div class="section-title"><i class="fa-regular fa-calendar-check"></i> Weekly Airing Schedule</div>
+    </div>
+    <div class="anime-grid" id="scheduleGrid"></div>
+  </section>
+
+  <!-- VIEW 4: SAVED WATCHLIST -->
+  <section id="view-watchlist" class="view-page">
+    <div class="section-header" style="padding-top:16px;">
+      <div class="section-title"><i class="fa-solid fa-bookmark"></i> My Saved Anime List</div>
+    </div>
+    <div class="anime-grid" id="watchlistGrid"></div>
+  </section>
+
+  <!-- FULLSCREEN ANIME DETAIL & MULTI-SERVER PLAYER MODAL -->
+  <div class="detail-modal" id="detailModal">
+    <div class="modal-top-bar">
+      <button class="icon-btn" onclick="closeDetailModal()">
+        <i class="fa-solid fa-arrow-left"></i>
+      </button>
+      <div style="font-weight:800; font-size:0.9rem; max-width:65%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" id="modalTopTitle">
+        Anime Details
+      </div>
+      <button class="icon-btn" id="bookmarkBtn" onclick="toggleCurrentBookmark()">
+        <i class="fa-regular fa-bookmark"></i>
+      </button>
+    </div>
+
+    <!-- Built-In Multi-Server Video Player -->
+    <div class="player-container">
+      <iframe id="videoIframe" src="" allowfullscreen allow="autoplay; encrypted-media"></iframe>
+    </div>
+
+    <!-- Server Selector -->
+    <div class="server-bar" id="serverBar"></div>
+
+    <!-- Telegram Quote-Box Styled Post Info -->
+    <div class="tg-post-card">
+      <div class="tg-quote-header">
+        <span id="detailQuoteTitle">➲ Anime Title (S - 01)</span>
+        <span style="color:#38bdf8;">”</span>
+      </div>
+      <div class="tg-specs-list">
+        <div>◈ <b>Episode:</b> <span id="detailEpLabel">01</span></div>
+        <div>◈ <b>Audio:</b> <span id="detailAudio">Hindi [Dual Audio]</span></div>
+        <div>◈ <b>Quality:</b> <span id="detailQuality">480p, 720p, 1080p</span></div>
+        <div>◈ <b>Genres:</b> <span id="detailGenres">Action, Adventure, Fantasy</span></div>
+      </div>
+      <div class="tg-quote-header" style="margin-bottom:0; font-size:0.82rem;">
+        <span>• Main Channel : <b id="detailMainTag">『@FlyTon_Anime』</b></span>
+        <span style="color:#38bdf8;">”</span>
+      </div>
+    </div>
+
+    <!-- 3 Colorful Telegram Navigation Buttons -->
+    <div class="tg-three-buttons">
+      <a id="btnWatchDownload" class="tg-btn-main" href="#" target="_blank">
+        📥 WATCH & DOWNLOAD IN TELEGRAM 📥
+      </a>
+      <div class="tg-btn-row">
+        <a id="btnAnimeNews" class="tg-btn-sub" href="#" target="_blank">• ANIME NEWS •</a>
+        <a id="btnAllBackup" class="tg-btn-sub" href="#" target="_blank">• ALL BACKUP •</a>
+      </div>
+    </div>
+
+    <!-- Episode Selector Grid -->
+    <div class="section-header">
+      <div class="section-title"><i class="fa-solid fa-list-ol"></i> Select Episode</div>
+    </div>
+    <div class="ep-grid" id="epGrid"></div>
+
+    <!-- Synopsis -->
+    <div style="padding:0 16px 20px; font-size:0.82rem; color:var(--text-muted); line-height:1.6;" id="detailSynopsis"></div>
+  </div>
+
+  <!-- FLOATING BOTTOM NAVIGATION BAR -->
+  <nav class="bottom-nav">
+    <div class="nav-item active" id="nav-home" onclick="switchTab('home')">
+      <i class="fa-solid fa-house"></i>
+      <span>Home</span>
+    </div>
+    <div class="nav-item" id="nav-search" onclick="switchTab('search')">
+      <i class="fa-solid fa-compass"></i>
+      <span>Browse</span>
+    </div>
+    <div class="nav-item" id="nav-schedule" onclick="switchTab('schedule')">
+      <i class="fa-solid fa-calendar-days"></i>
+      <span>Schedule</span>
+    </div>
+    <div class="nav-item" id="nav-watchlist" onclick="switchTab('watchlist')">
+      <i class="fa-solid fa-heart"></i>
+      <span>My List</span>
+    </div>
+  </nav>
+
+  <script>
+    // Initialize Telegram Mini App WebApp API
+    const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+    if (tg) {
+      tg.ready();
+      tg.expand();
+      try {
+        tg.setHeaderColor('#07080d');
+        tg.setBackgroundColor('#07080d');
+      } catch (e) {}
+    }
+
+    let APP_CONFIG = {
+      app_name: "FlyTon Anime",
+      main_channel_username: "@FlyTon_Anime",
+      main_channel_url: "https://t.me/FlyTon_Anime",
+      news_channel_url: "https://t.me/FlyTon_Anime",
+      backup_channel_url: "https://t.me/FlyTon_Anime",
+      credit_text: "Powered by FlyTon Anime Official"
+    };
+
+    let currentAnime = null;
+    let currentEpisode = 1;
+    let searchTimer = null;
+
+    function openExternalLink(url) {
+      if (!url) return;
+      if (tg && url.includes('t.me/')) {
+        tg.openTelegramLink(url);
+      } else if (tg) {
+        tg.openLink(url);
+      } else {
+        window.open(url, '_blank');
+      }
+    }
+
+    function createAnimeCardHTML(item) {
+      const epBadge = item.scheduled_episode
+        ? `EP ${item.scheduled_episode}`
+        : `EP ${item.latest_ep || item.episodes || 12}`;
+      const dubBadge = item.is_hindi_dub ? `<span class="card-dub-pill">HINDI</span>` : '';
+      return `
+        <div class="anime-card" onclick="openAnimeDetail(${item.id})">
+          <div class="poster-wrap">
+            <img src="${item.poster}" alt="${item.title}" loading="lazy" />
+            <span class="card-score">⭐ ${item.score || '8.2'}</span>
+            ${dubBadge}
+            <span class="card-ep-pill">${epBadge}</span>
+          </div>
+          <div class="card-info">
+            <div class="card-title">${item.title}</div>
+            <div class="card-sub">
+              <span>${item.format || 'TV'}</span>
+              <span>${item.season || 'HD'}</span>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    async function loadAppConfig() {
+      try {
+        const res = await fetch('/api/config');
+        const cfg = await res.json();
+        APP_CONFIG = { ...APP_CONFIG, ...cfg };
+        document.getElementById('appName').textContent = APP_CONFIG.app_name;
+        document.getElementById('appChannelTag').textContent = APP_CONFIG.main_channel_username;
+        document.getElementById('quoteChannelName').textContent = `『${APP_CONFIG.main_channel_username}』`;
+        document.getElementById('footerCredit').textContent = `⚡ ${APP_CONFIG.credit_text} • ${APP_CONFIG.main_channel_username}`;
+        document.getElementById('headerJoinBtn').href = APP_CONFIG.main_channel_url;
+        if (APP_CONFIG.logo_url) {
+          document.getElementById('appLogo').src = APP_CONFIG.logo_url;
+        }
+      } catch (e) {
+        console.warn('Config load fallback:', e);
+      }
+    }
+
+    async function loadHomeFeed() {
+      try {
+        const res = await fetch('/api/home');
+        const data = await res.json();
+
+        if (data.spotlight && data.spotlight.length > 0) {
+          const hero = data.spotlight[0];
+          document.getElementById('heroBg').style.backgroundImage = `url('${hero.banner || hero.poster}')`;
+          document.getElementById('heroTitle').textContent = hero.title;
+          document.getElementById('heroAudio').textContent = hero.audio_badge;
+          document.getElementById('heroMeta').innerHTML = `
+            <span>⭐ ${hero.score}</span><span>•</span>
+            <span>${hero.format}</span><span>•</span>
+            <span>EP ${hero.latest_ep}</span>
+          `;
+          document.getElementById('heroWatchBtn').onclick = () => openAnimeDetail(hero.id);
+        }
+
+        document.getElementById('railHindi').innerHTML = (data.hindi_dubs || []).map(createAnimeCardHTML).join('');
+        document.getElementById('railTrending').innerHTML = (data.trending || []).map(createAnimeCardHTML).join('');
+        document.getElementById('railAiring').innerHTML = (data.airing || []).map(createAnimeCardHTML).join('');
+        document.getElementById('railMovies').innerHTML = (data.movies || []).map(createAnimeCardHTML).join('');
+      } catch (err) {
+        console.error('Home feed error:', err);
+      }
+    }
+
+    async function openAnimeDetail(animeId) {
+      document.getElementById('detailModal').classList.add('open');
+      document.getElementById('modalTopTitle').textContent = 'Loading...';
+
+      try {
+        const res = await fetch(`/api/anime/${animeId}`);
+        const info = await res.json();
+        currentAnime = info;
+        currentEpisode = 1;
+
+        document.getElementById('modalTopTitle').textContent = info.title;
+        document.getElementById('detailQuoteTitle').textContent = `➲ ${info.title} (${info.season || 'S - 01'})`;
+        document.getElementById('detailAudio').textContent = info.audio_badge;
+        document.getElementById('detailQuality').textContent = (info.qualities || ['480p', '720p', '1080p']).join(', ');
+        document.getElementById('detailGenres').textContent = (info.genres || ['Action', 'Fantasy']).join(', ');
+        document.getElementById('detailMainTag').textContent = `『${APP_CONFIG.main_channel_username}』`;
+        document.getElementById('detailSynopsis').textContent = info.synopsis;
+
+        const btns = info.buttons || {};
+        const watchBtn = document.getElementById('btnWatchDownload');
+        const newsBtn = document.getElementById('btnAnimeNews');
+        const backupBtn = document.getElementById('btnAllBackup');
+
+        watchBtn.onclick = (e) => { e.preventDefault(); openExternalLink(btns.watch_download_url || APP_CONFIG.main_channel_url); };
+        newsBtn.onclick = (e) => { e.preventDefault(); openExternalLink(btns.anime_news_url || APP_CONFIG.news_channel_url); };
+        backupBtn.onclick = (e) => { e.preventDefault(); openExternalLink(btns.all_backup_url || APP_CONFIG.backup_channel_url); };
+
+        const epList = info.episodes_list || [];
+        document.getElementById('epGrid').innerHTML = epList.map(ep => `
+          <div class="ep-pill ${ep.number === 1 ? 'active' : ''}" id="ep-pill-${ep.number}" onclick="selectEpisode(${ep.number})">
+            EP ${String(ep.number).padStart(2, '0')}
+          </div>
+        `).join('');
+
+        updateBookmarkIcon();
+        await selectEpisode(1);
+      } catch (e) {
+        console.error('Detail error:', e);
+      }
+    }
+
+    async function selectEpisode(epNum) {
+      if (!currentAnime) return;
+      currentEpisode = epNum;
+      document.querySelectorAll('.ep-pill').forEach(el => el.classList.remove('active'));
+      const activePill = document.getElementById(`ep-pill-${epNum}`);
+      if (activePill) activePill.classList.add('active');
+
+      document.getElementById('detailEpLabel').textContent = String(epNum).padStart(2, '0');
+
+      try {
+        const res = await fetch(`/api/stream/${currentAnime.id}/${epNum}?slug=${encodeURIComponent(currentAnime.slug)}`);
+        const streamData = await res.json();
+        const servers = streamData.servers || [];
+
+        const serverBar = document.getElementById('serverBar');
+        serverBar.innerHTML = servers.map((srv, idx) => `
+          <button class="srv-btn ${idx === 0 ? 'active' : ''}" onclick="switchServer('${srv.embed_url}', this)">
+            <i class="fa-solid fa-server"></i> ${srv.name}
+          </button>
+        `).join('');
+
+        if (servers.length > 0) {
+          document.getElementById('videoIframe').src = servers[0].embed_url;
+        }
+      } catch (e) {
+        console.error('Stream load error:', e);
+      }
+    }
+
+    function switchServer(embedUrl, btnEl) {
+      document.querySelectorAll('.srv-btn').forEach(b => b.classList.remove('active'));
+      btnEl.classList.add('active');
+      document.getElementById('videoIframe').src = embedUrl;
+    }
+
+    function closeDetailModal() {
+      document.getElementById('detailModal').classList.remove('open');
+      document.getElementById('videoIframe').src = '';
+    }
+
+    function switchTab(tabName) {
+      document.querySelectorAll('.view-page').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+      document.getElementById(`view-${tabName}`).classList.add('active');
+      const navEl = document.getElementById(`nav-${tabName}`);
+      if (navEl) navEl.classList.add('active');
+
+      if (tabName === 'search' && !document.getElementById('searchGrid').innerHTML.trim()) {
+        runSearch('', 'ALL', false);
+      } else if (tabName === 'schedule') {
+        loadSchedule();
+      } else if (tabName === 'watchlist') {
+        renderWatchlist();
+      }
+    }
+
+    function debounceSearch() {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => {
+        const q = document.getElementById('searchInput').value.trim();
+        runSearch(q, 'ALL', false);
+      }, 350);
+    }
+
+    function selectGenre(genre, chipEl) {
+      document.querySelectorAll('#genreChips .chip').forEach(c => c.classList.remove('active'));
+      chipEl.classList.add('active');
+      const q = document.getElementById('searchInput').value.trim();
+      if (genre === 'HINDI') {
+        runSearch(q, '', true);
+      } else {
+        runSearch(q, genre, false);
+      }
+    }
+
+    function filterHindiDubs() {
+      switchTab('search');
+      const chips = document.querySelectorAll('#genreChips .chip');
+      if (chips[1]) selectGenre('HINDI', chips[1]);
+    }
+
+    async function runSearch(query, genre, dubOnly) {
+      const grid = document.getElementById('searchGrid');
+      grid.innerHTML = '<div style="padding:20px; color:var(--text-muted);">Searching anime...</div>';
+      try {
+        const url = `/api/search?q=${encodeURIComponent(query)}&genre=${encodeURIComponent(genre)}&dub=${dubOnly ? '1' : '0'}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        grid.innerHTML = (data.results || []).map(createAnimeCardHTML).join('') || '<div style="padding:20px;">No anime found.</div>';
+      } catch (e) {
+        grid.innerHTML = '<div style="padding:20px;">Failed to load search results.</div>';
+      }
+    }
+
+    async function loadSchedule() {
+      const grid = document.getElementById('scheduleGrid');
+      if (grid.innerHTML.trim()) return;
+      grid.innerHTML = '<div style="padding:20px; color:var(--text-muted);">Loading airing schedule...</div>';
+      try {
+        const res = await fetch('/api/schedule');
+        const data = await res.json();
+        grid.innerHTML = (data.schedule || []).map(createAnimeCardHTML).join('');
+      } catch (e) {
+        grid.innerHTML = '<div style="padding:20px;">Could not load schedule.</div>';
+      }
+    }
+
+    async function openRandomAnime() {
+      try {
+        const res = await fetch('/api/random');
+        const data = await res.json();
+        if (data && data.id) openAnimeDetail(data.id);
+      } catch (e) {}
+    }
+
+    function getWatchlist() {
+      try {
+        return JSON.parse(localStorage.getItem('flyton_watchlist') || '[]');
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function toggleCurrentBookmark() {
+      if (!currentAnime) return;
+      let list = getWatchlist();
+      const exists = list.some(item => item.id === currentAnime.id);
+      if (exists) {
+        list = list.filter(item => item.id !== currentAnime.id);
+      } else {
+        list.unshift({
+          id: currentAnime.id,
+          title: currentAnime.title,
+          poster: currentAnime.poster,
+          score: currentAnime.score,
+          format: currentAnime.format,
+          season: currentAnime.season,
+          latest_ep: currentAnime.latest_ep,
+          is_hindi_dub: currentAnime.is_hindi_dub
+        });
+      }
+      localStorage.setItem('flyton_watchlist', JSON.stringify(list));
+      updateBookmarkIcon();
+    }
+
+    function updateBookmarkIcon() {
+      if (!currentAnime) return;
+      const exists = getWatchlist().some(item => item.id === currentAnime.id);
+      document.getElementById('bookmarkBtn').innerHTML = exists
+        ? '<i class="fa-solid fa-bookmark" style="color:var(--primary)"></i>'
+        : '<i class="fa-regular fa-bookmark"></i>';
+    }
+
+    function renderWatchlist() {
+      const list = getWatchlist();
+      const grid = document.getElementById('watchlistGrid');
+      if (!list.length) {
+        grid.innerHTML = '<div style="padding:20px; color:var(--text-muted); grid-column:1/-1;">No saved anime yet. Tap the bookmark icon on any anime to save it!</div>';
+        return;
+      }
+      grid.innerHTML = list.map(createAnimeCardHTML).join('');
+    }
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      await loadAppConfig();
+      await loadHomeFeed();
+    });
+  </script>
+</body>
+</html>
