@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>FlyTon Anime — Watch & Download HD Anime</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Anime App</title>
   <!-- Official Telegram Mini App SDK -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <!-- Google Fonts & Icons -->
@@ -27,6 +27,7 @@
       --btn-gradient: linear-gradient(135deg, #e11d48 0%, #be123c 100%);
       --radius-lg: 18px;
       --radius-md: 12px;
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
     }
 
     * {
@@ -36,17 +37,21 @@
       -webkit-tap-highlight-color: transparent;
     }
 
+    [hidden] { display: none !important; }
+
     body {
-      font-family: 'Outfit', sans-serif;
+      font-family: 'Outfit', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
       background-color: var(--bg-main);
       background-image:
         radial-gradient(circle at 10% 10%, rgba(124, 58, 237, 0.14), transparent 35%),
         radial-gradient(circle at 90% 20%, rgba(255, 42, 95, 0.12), transparent 35%);
       color: var(--text-main);
       min-height: 100vh;
-      padding-bottom: 92px;
+      padding-bottom: calc(92px + var(--safe-bottom));
       overflow-x: hidden;
     }
+
+    body.modal-open { overflow: hidden; }
 
     /* TOP GLASS HEADER */
     .app-header {
@@ -68,6 +73,7 @@
       align-items: center;
       gap: 10px;
       cursor: pointer;
+      min-width: 0;
     }
 
     .brand-logo {
@@ -77,6 +83,7 @@
       object-fit: cover;
       border: 1.5px solid var(--primary);
       box-shadow: 0 0 12px var(--primary-glow);
+      flex: 0 0 auto;
     }
 
     .brand-title {
@@ -85,7 +92,13 @@
       letter-spacing: 0.3px;
       background: linear-gradient(90deg, #ffffff, #ff6b8b, #a855f7);
       -webkit-background-clip: text;
+      background-clip: text;
       -webkit-text-fill-color: transparent;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: block;
+      max-width: 52vw;
     }
 
     .brand-sub {
@@ -180,10 +193,7 @@
       letter-spacing: 0.4px;
     }
 
-    .badge-Trending {
-      background: var(--primary);
-      color: #fff;
-    }
+    .badge-Trending { background: var(--primary); color: #fff; }
 
     .badge-dub {
       background: rgba(0, 229, 255, 0.16);
@@ -212,12 +222,10 @@
       display: flex;
       align-items: center;
       gap: 10px;
+      flex-wrap: wrap;
     }
 
-    .hero-btns {
-      display: flex;
-      gap: 10px;
-    }
+    .hero-btns { display: flex; gap: 10px; }
 
     .btn-watch-hero {
       flex: 1;
@@ -228,6 +236,7 @@
       border-radius: 11px;
       font-weight: 800;
       font-size: 0.85rem;
+      font-family: inherit;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -244,6 +253,7 @@
       border-radius: 11px;
       font-weight: 700;
       font-size: 0.85rem;
+      font-family: inherit;
       cursor: pointer;
     }
 
@@ -261,14 +271,10 @@
       gap: 10px;
     }
 
-    .blue-quote-box b {
-      color: #38bdf8;
-    }
+    .blue-quote-box b { color: #38bdf8; }
 
     /* SECTION HEADERS & HORIZONTAL RAILS */
-    .section-block {
-      margin-bottom: 24px;
-    }
+    .section-block { margin-bottom: 24px; }
 
     .section-header {
       display: flex;
@@ -285,9 +291,7 @@
       gap: 8px;
     }
 
-    .section-title i {
-      color: var(--primary);
-    }
+    .section-title i { color: var(--primary); }
 
     .section-more {
       font-size: 0.75rem;
@@ -305,9 +309,7 @@
       scrollbar-width: none;
     }
 
-    .rail-scroll::-webkit-scrollbar {
-      display: none;
-    }
+    .rail-scroll::-webkit-scrollbar { display: none; }
 
     /* ANIME POSTER CARD */
     .anime-card {
@@ -321,10 +323,11 @@
       position: relative;
     }
 
-    .anime-card:hover {
-      transform: translateY(-4px);
-      border-color: var(--primary);
+    @media (hover: hover) {
+      .anime-card:hover { transform: translateY(-4px); border-color: var(--primary); }
     }
+
+    .anime-card:active { transform: scale(0.98); }
 
     .poster-wrap {
       position: relative;
@@ -334,11 +337,7 @@
       overflow: hidden;
     }
 
-    .poster-wrap img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
+    .poster-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
     .card-score {
       position: absolute;
@@ -353,6 +352,18 @@
       display: flex;
       align-items: center;
       gap: 3px;
+    }
+
+    .card-time {
+      position: absolute;
+      top: 7px;
+      right: 7px;
+      background: rgba(7, 8, 13, 0.85);
+      color: #7dd3fc;
+      font-size: 0.62rem;
+      font-weight: 800;
+      padding: 3px 6px;
+      border-radius: 6px;
     }
 
     .card-ep-pill {
@@ -379,9 +390,7 @@
       border-radius: 5px;
     }
 
-    .card-info {
-      padding: 8px 9px 10px;
-    }
+    .card-info { padding: 8px 9px 10px; }
 
     .card-title {
       font-size: 0.8rem;
@@ -397,7 +406,10 @@
       color: var(--text-muted);
       display: flex;
       justify-content: space-between;
+      gap: 6px;
     }
+
+    .card-sub span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
     /* GRID VIEW FOR SEARCH / SCHEDULE / WATCHLIST */
     .anime-grid {
@@ -407,15 +419,10 @@
       padding: 10px 16px;
     }
 
-    .anime-grid .anime-card {
-      flex: unset;
-      width: 100%;
-    }
+    .anime-grid .anime-card { flex: unset; width: 100%; }
 
     /* SEARCH & FILTER BAR */
-    .search-box-wrap {
-      padding: 14px 16px 8px;
-    }
+    .search-box-wrap { padding: 14px 16px 8px; }
 
     .search-bar {
       display: flex;
@@ -429,12 +436,13 @@
 
     .search-bar input {
       flex: 1;
+      min-width: 0;
       background: transparent;
       border: none;
       outline: none;
       color: #fff;
       font-family: inherit;
-      font-size: 0.92rem;
+      font-size: 16px; /* 16px: iPhone zoom nahi karta */
     }
 
     .genre-chips {
@@ -445,9 +453,7 @@
       scrollbar-width: none;
     }
 
-    .genre-chips::-webkit-scrollbar {
-      display: none;
-    }
+    .genre-chips::-webkit-scrollbar { display: none; }
 
     .chip {
       white-space: nowrap;
@@ -459,6 +465,7 @@
       border: 1px solid var(--glass-border);
       color: var(--text-muted);
       cursor: pointer;
+      flex: 0 0 auto;
     }
 
     .chip.active {
@@ -466,6 +473,86 @@
       color: #fff;
       border-color: var(--primary);
     }
+
+    /* LOADING / ERROR STATES */
+    .sk {
+      background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.1) 37%, rgba(255,255,255,0.04) 63%);
+      background-size: 400% 100%;
+      animation: shimmer 1.4s ease infinite;
+    }
+
+    @keyframes shimmer {
+      0% { background-position: 100% 50%; }
+      100% { background-position: 0 50%; }
+    }
+
+    .sk-card {
+      flex: 0 0 136px;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      border: 1px solid var(--glass-border);
+      background: var(--glass-card);
+    }
+
+    .anime-grid .sk-card { flex: unset; width: 100%; }
+    .sk-card .sk-poster { aspect-ratio: 2 / 2.85; }
+    .sk-card .sk-line { height: 9px; margin: 10px 9px; border-radius: 6px; }
+
+    .state-box {
+      grid-column: 1 / -1;
+      width: 100%;
+      padding: 22px 16px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    .state-box button {
+      margin-top: 12px;
+      background: var(--btn-gradient);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 9px 18px;
+      font-weight: 800;
+      font-family: inherit;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+
+    .wake-note {
+      margin: 12px 14px 0;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: rgba(251, 191, 36, 0.1);
+      border: 1px solid rgba(251, 191, 36, 0.35);
+      color: #fcd34d;
+      font-size: 0.78rem;
+      line-height: 1.45;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: calc(100px + var(--safe-bottom));
+      transform: translate(-50%, 20px);
+      background: rgba(15, 18, 28, 0.96);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      padding: 10px 16px;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+      z-index: 400;
+      max-width: calc(100% - 40px);
+      text-align: center;
+    }
+
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
     /* FULLSCREEN DETAIL & VIDEO PLAYER MODAL */
     .detail-modal {
@@ -475,12 +562,11 @@
       background: var(--bg-main);
       overflow-y: auto;
       display: none;
-      padding-bottom: 90px;
+      padding-bottom: calc(40px + var(--safe-bottom));
+      -webkit-overflow-scrolling: touch;
     }
 
-    .detail-modal.open {
-      display: block;
-    }
+    .detail-modal.open { display: block; }
 
     .modal-top-bar {
       position: sticky;
@@ -492,7 +578,17 @@
       padding: 12px 16px;
       background: rgba(7, 8, 13, 0.88);
       backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
       border-bottom: 1px solid var(--glass-border);
+    }
+
+    .modal-title {
+      font-weight: 800;
+      font-size: 0.9rem;
+      max-width: 65%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .player-container {
@@ -503,20 +599,55 @@
       border-bottom: 1px solid var(--glass-border);
     }
 
-    .player-container iframe {
-      width: 100%;
-      height: 100%;
-      border: none;
+    .player-container iframe { width: 100%; height: 100%; border: none; display: block; }
+
+    .player-poster {
+      position: absolute;
+      inset: 0;
+      background-size: cover;
+      background-position: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      color: #fff;
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+
+    .player-poster::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+    }
+
+    .player-poster > * { position: relative; }
+
+    .play-btn {
+      width: 62px;
+      height: 62px;
+      border-radius: 50%;
+      background: var(--btn-gradient);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      box-shadow: 0 6px 22px var(--primary-glow);
     }
 
     .server-bar {
       display: flex;
+      flex-wrap: wrap;
       gap: 8px;
-      overflow-x: auto;
       padding: 10px 14px;
       background: var(--bg-elevated);
       border-bottom: 1px solid var(--glass-border);
     }
+
+    .server-bar:empty { display: none; }
 
     .srv-btn {
       white-space: nowrap;
@@ -524,16 +655,27 @@
       border-radius: 8px;
       font-size: 0.74rem;
       font-weight: 700;
+      font-family: inherit;
       background: rgba(255,255,255,0.06);
       color: var(--text-muted);
       border: 1px solid var(--glass-border);
       cursor: pointer;
+      flex: 0 0 auto;
     }
 
     .srv-btn.active {
       background: var(--secondary);
       color: #fff;
       border-color: #a855f7;
+    }
+
+    .player-note {
+      padding: 8px 14px;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      background: var(--bg-elevated);
+      border-bottom: 1px solid var(--glass-border);
+      line-height: 1.45;
     }
 
     /* TELEGRAM QUOTE-BOX STYLE DETAILS & 3 COLORFUL BUTTONS */
@@ -557,6 +699,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      gap: 8px;
     }
 
     .tg-specs-list {
@@ -569,7 +712,6 @@
       margin-bottom: 10px;
     }
 
-    /* 3 COLORFUL TELEGRAM POST BUTTONS */
     .tg-three-buttons {
       display: flex;
       flex-direction: column;
@@ -578,6 +720,7 @@
     }
 
     .tg-btn-main {
+      display: block;
       width: 100%;
       background: linear-gradient(135deg, #c83e5b 0%, #a82845 100%);
       color: #fff;
@@ -592,13 +735,11 @@
       cursor: pointer;
     }
 
-    .tg-btn-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-    }
+    .tg-btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .tg-btn-row.single { grid-template-columns: 1fr; }
 
     .tg-btn-sub {
+      display: block;
       background: linear-gradient(135deg, #b83b56 0%, #93243c 100%);
       color: #fff;
       text-decoration: none;
@@ -612,6 +753,16 @@
     }
 
     /* EPISODE NUMBER GRID */
+    .ep-ranges {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 0 14px 10px;
+      scrollbar-width: none;
+    }
+
+    .ep-ranges:empty { display: none; }
+
     .ep-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(62px, 1fr));
@@ -636,10 +787,46 @@
       border-color: var(--primary);
     }
 
+    .detail-synopsis {
+      padding: 0 16px 20px;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+      white-space: pre-line;
+    }
+
+    .cast-row {
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+      padding: 4px 16px 14px;
+      scrollbar-width: none;
+    }
+
+    .cast { flex: 0 0 68px; text-align: center; font-size: 0.66rem; color: var(--text-muted); }
+
+    .cast img {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 1.5px solid var(--glass-border);
+      background: #161926;
+      display: block;
+      margin: 0 auto 5px;
+    }
+
+    .cast span {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
     /* FLOATING BOTTOM NAVIGATION BAR */
     .bottom-nav {
       position: fixed;
-      bottom: 12px;
+      bottom: calc(12px + var(--safe-bottom));
       left: 50%;
       transform: translateX(-50%);
       width: calc(100% - 28px);
@@ -670,26 +857,12 @@
       transition: all 0.2s ease;
     }
 
-    .nav-item i {
-      font-size: 1.05rem;
-    }
+    .nav-item i { font-size: 1.05rem; }
+    .nav-item.active { color: #fff; background: rgba(255, 42, 95, 0.18); }
+    .nav-item.active i { color: var(--primary); }
 
-    .nav-item.active {
-      color: #fff;
-      background: rgba(255, 42, 95, 0.18);
-    }
-
-    .nav-item.active i {
-      color: var(--primary);
-    }
-
-    .view-page {
-      display: none;
-    }
-
-    .view-page.active {
-      display: block;
-    }
+    .view-page { display: none; }
+    .view-page.active { display: block; }
 
     .footer-credit {
       text-align: center;
@@ -703,18 +876,18 @@
 
   <!-- TOP GLASS HEADER -->
   <header class="app-header">
-    <div class="brand-wrap" onclick="switchTab('home')">
-      <img id="appLogo" class="brand-logo" src="https://cdn-icons-png.flaticon.com/512/2503/2503508.png" alt="Logo" />
-      <div>
-        <span id="appName" class="brand-title">FlyTon Anime</span>
-        <span id="appChannelTag" class="brand-sub">@FlyTon_Anime</span>
+    <div class="brand-wrap" data-act="tab" data-tab="home">
+      <img id="appLogo" class="brand-logo" alt="" />
+      <div style="min-width:0;">
+        <span id="appName" class="brand-title"></span>
+        <span id="appChannelTag" class="brand-sub"></span>
       </div>
     </div>
     <div class="header-actions">
-      <button class="icon-btn" onclick="openRandomAnime()" title="Random Anime">
+      <button class="icon-btn" data-act="random" title="Random Anime" aria-label="Random anime">
         <i class="fa-solid fa-dice"></i>
       </button>
-      <a id="headerJoinBtn" class="tg-join-pill" href="https://t.me/FlyTon_Anime" target="_blank">
+      <a id="headerJoinBtn" class="tg-join-pill" data-act="link" href="#" target="_blank" rel="noopener noreferrer" hidden>
         <i class="fa-brands fa-telegram"></i> Join
       </a>
     </div>
@@ -722,26 +895,26 @@
 
   <!-- VIEW 1: HOME -->
   <main id="view-home" class="view-page active">
+    <div class="wake-note" id="wakeNote" hidden>
+      ⏳ Server abhi jaag raha hai (free server kuch der baad so jaata hai). 30-60 second wait karo, apne-aap load ho jayega.
+    </div>
+
     <!-- Hero Spotlight -->
     <div class="hero-wrap" id="heroBanner">
       <div class="hero-bg" id="heroBg"></div>
       <div class="hero-overlay">
         <div class="hero-badges">
           <span class="badge badge-Trending">🔥 #1 Spotlight</span>
-          <span class="badge badge-dub" id="heroAudio">Hindi [Dual Audio]</span>
-          <span class="badge badge-quality">480p • 720p • 1080p</span>
+          <span class="badge badge-dub" id="heroAudio"></span>
+          <span class="badge badge-quality" id="heroQuality">480p • 720p • 1080p</span>
         </div>
-        <h1 class="hero-title" id="heroTitle">Loading Spotlight Anime...</h1>
-        <div class="hero-meta" id="heroMeta">
-          <span>⭐ 8.9</span>
-          <span>•</span>
-          <span>TV Series</span>
-        </div>
+        <h1 class="hero-title" id="heroTitle">Loading...</h1>
+        <div class="hero-meta" id="heroMeta"></div>
         <div class="hero-btns">
-          <button class="btn-watch-hero" id="heroWatchBtn">
-            <i class="fa-solid fa-play"></i> WATCH & DOWNLOAD
+          <button class="btn-watch-hero" id="heroWatchBtn" data-act="open" data-id="">
+            <i class="fa-solid fa-play"></i> WATCH &amp; DOWNLOAD
           </button>
-          <button class="btn-glass-hero" onclick="switchTab('search')">
+          <button class="btn-glass-hero" data-act="tab" data-tab="search" aria-label="Search">
             <i class="fa-solid fa-magnifying-glass"></i>
           </button>
         </div>
@@ -751,7 +924,7 @@
     <!-- Pro Blue Quote-Box Channel Banner -->
     <div class="blue-quote-box">
       <div>
-        <b>• Official Main Channel :</b> <span id="quoteChannelName">『@FlyTon_Anime』</span>
+        <b>• Official Main Channel :</b> <span id="quoteChannelName"></span>
       </div>
       <span style="font-size:0.72rem; color:#94a3b8;">100% HD Dual Audio</span>
     </div>
@@ -760,7 +933,7 @@
     <section class="section-block">
       <div class="section-header">
         <div class="section-title"><i class="fa-solid fa-microphone-lines"></i> Hindi Dubbed Anime</div>
-        <span class="section-more" onclick="filterHindiDubs()">View All →</span>
+        <span class="section-more" data-act="dubs">View All →</span>
       </div>
       <div class="rail-scroll" id="railHindi"></div>
     </section>
@@ -769,7 +942,7 @@
     <section class="section-block">
       <div class="section-header">
         <div class="section-title"><i class="fa-solid fa-fire"></i> Trending Now</div>
-        <span class="section-more" onclick="switchTab('search')">Explore →</span>
+        <span class="section-more" data-act="tab" data-tab="search">Explore →</span>
       </div>
       <div class="rail-scroll" id="railTrending"></div>
     </section>
@@ -778,7 +951,7 @@
     <section class="section-block">
       <div class="section-header">
         <div class="section-title"><i class="fa-solid fa-tower-broadcast"></i> Currently Airing</div>
-        <span class="section-more" onclick="switchTab('schedule')">Schedule →</span>
+        <span class="section-more" data-act="tab" data-tab="schedule">Schedule →</span>
       </div>
       <div class="rail-scroll" id="railAiring"></div>
     </section>
@@ -791,9 +964,7 @@
       <div class="rail-scroll" id="railMovies"></div>
     </section>
 
-    <div class="footer-credit" id="footerCredit">
-      ⚡ Powered by FlyTon Anime Official • @FlyTon_Anime
-    </div>
+    <div class="footer-credit" id="footerCredit"></div>
   </main>
 
   <!-- VIEW 2: SEARCH & GENRE FILTER -->
@@ -801,27 +972,19 @@
     <div class="search-box-wrap">
       <div class="search-bar">
         <i class="fa-solid fa-magnifying-glass" style="color:var(--text-muted)"></i>
-        <input type="text" id="searchInput" placeholder="Search Solo Leveling, Demon Slayer, JoJo..." oninput="debounceSearch()" />
+        <input type="search" id="searchInput" placeholder="Search Solo Leveling, Demon Slayer, JoJo..." autocomplete="off" enterkeyhint="search" />
       </div>
     </div>
-    <div class="genre-chips" id="genreChips">
-      <span class="chip active" onclick="selectGenre('ALL', this)">All Anime</span>
-      <span class="chip" onclick="selectGenre('HINDI', this)">🇮🇳 Hindi Dub</span>
-      <span class="chip" onclick="selectGenre('Action', this)">Action</span>
-      <span class="chip" onclick="selectGenre('Adventure', this)">Adventure</span>
-      <span class="chip" onclick="selectGenre('Fantasy', this)">Fantasy</span>
-      <span class="chip" onclick="selectGenre('Supernatural', this)">Supernatural</span>
-      <span class="chip" onclick="selectGenre('Romance', this)">Romance</span>
-      <span class="chip" onclick="selectGenre('Sci-Fi', this)">Sci-Fi</span>
-    </div>
+    <div class="genre-chips" id="genreChips"></div>
     <div class="anime-grid" id="searchGrid"></div>
   </section>
 
-  <!-- VIEW 3: AIRING SCHEDULE CALENDAR -->
+  <!-- VIEW 3: AIRING SCHEDULE -->
   <section id="view-schedule" class="view-page">
     <div class="section-header" style="padding-top:16px;">
       <div class="section-title"><i class="fa-regular fa-calendar-check"></i> Weekly Airing Schedule</div>
     </div>
+    <div class="genre-chips" id="dayChips"></div>
     <div class="anime-grid" id="scheduleGrid"></div>
   </section>
 
@@ -833,401 +996,704 @@
     <div class="anime-grid" id="watchlistGrid"></div>
   </section>
 
-  <!-- FULLSCREEN ANIME DETAIL & MULTI-SERVER PLAYER MODAL -->
+  <!-- FULLSCREEN ANIME DETAIL & PLAYER MODAL -->
   <div class="detail-modal" id="detailModal">
     <div class="modal-top-bar">
-      <button class="icon-btn" onclick="closeDetailModal()">
+      <button class="icon-btn" data-act="back" aria-label="Back">
         <i class="fa-solid fa-arrow-left"></i>
       </button>
-      <div style="font-weight:800; font-size:0.9rem; max-width:65%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" id="modalTopTitle">
-        Anime Details
-      </div>
-      <button class="icon-btn" id="bookmarkBtn" onclick="toggleCurrentBookmark()">
+      <div class="modal-title" id="modalTopTitle">Anime Details</div>
+      <button class="icon-btn" id="bookmarkBtn" data-act="bookmark" aria-label="Save">
         <i class="fa-regular fa-bookmark"></i>
       </button>
     </div>
 
-    <!-- Built-In Multi-Server Video Player -->
-    <div class="player-container">
-      <iframe id="videoIframe" src="" allowfullscreen allow="autoplay; encrypted-media"></iframe>
-    </div>
+    <div id="detailError" class="state-box" hidden></div>
 
-    <!-- Server Selector -->
-    <div class="server-bar" id="serverBar"></div>
-
-    <!-- Telegram Quote-Box Styled Post Info -->
-    <div class="tg-post-card">
-      <div class="tg-quote-header">
-        <span id="detailQuoteTitle">➲ Anime Title (S - 01)</span>
-        <span style="color:#38bdf8;">”</span>
+    <div id="detailBody">
+      <!-- Player (click karne par hi load hota hai: data bachta hai, ads/popups nahi aate) -->
+      <div id="playerWrap">
+        <div class="player-container" id="playerBox">
+          <div class="player-poster" id="playerPoster" data-act="play">
+            <div class="play-btn"><i class="fa-solid fa-play"></i></div>
+            <span>Tap to load player</span>
+          </div>
+          <!-- iframe yahan JS se banta hai (setFrame) -->
+        </div>
+        <div class="server-bar" id="serverBar"></div>
+        <div class="player-note" id="playerNote" hidden></div>
       </div>
-      <div class="tg-specs-list">
-        <div>◈ <b>Episode:</b> <span id="detailEpLabel">01</span></div>
-        <div>◈ <b>Audio:</b> <span id="detailAudio">Hindi [Dual Audio]</span></div>
-        <div>◈ <b>Quality:</b> <span id="detailQuality">480p, 720p, 1080p</span></div>
-        <div>◈ <b>Genres:</b> <span id="detailGenres">Action, Adventure, Fantasy</span></div>
-      </div>
-      <div class="tg-quote-header" style="margin-bottom:0; font-size:0.82rem;">
-        <span>• Main Channel : <b id="detailMainTag">『@FlyTon_Anime』</b></span>
-        <span style="color:#38bdf8;">”</span>
-      </div>
-    </div>
 
-    <!-- 3 Colorful Telegram Navigation Buttons -->
-    <div class="tg-three-buttons">
-      <a id="btnWatchDownload" class="tg-btn-main" href="#" target="_blank">
-        📥 WATCH & DOWNLOAD IN TELEGRAM 📥
-      </a>
-      <div class="tg-btn-row">
-        <a id="btnAnimeNews" class="tg-btn-sub" href="#" target="_blank">• ANIME NEWS •</a>
-        <a id="btnAllBackup" class="tg-btn-sub" href="#" target="_blank">• ALL BACKUP •</a>
+      <!-- Telegram Quote-Box Styled Post Info -->
+      <div class="tg-post-card">
+        <div class="tg-quote-header">
+          <span id="detailQuoteTitle">➲ Anime Title</span>
+          <span style="color:#38bdf8;">”</span>
+        </div>
+        <div class="tg-specs-list">
+          <div>◈ <b>Episode:</b> <span id="detailEpLabel">01</span></div>
+          <div>◈ <b>Audio:</b> <span id="detailAudio"></span></div>
+          <div>◈ <b>Quality:</b> <span id="detailQuality"></span></div>
+          <div>◈ <b>Genres:</b> <span id="detailGenres"></span></div>
+        </div>
+        <div class="tg-quote-header" style="margin-bottom:0; font-size:0.82rem;">
+          <span>• Main Channel : <b id="detailMainTag"></b></span>
+          <span style="color:#38bdf8;">”</span>
+        </div>
       </div>
-    </div>
 
-    <!-- Episode Selector Grid -->
-    <div class="section-header">
-      <div class="section-title"><i class="fa-solid fa-list-ol"></i> Select Episode</div>
-    </div>
-    <div class="ep-grid" id="epGrid"></div>
+      <!-- 3 Colorful Telegram Navigation Buttons -->
+      <div class="tg-three-buttons">
+        <a id="btnWatchDownload" class="tg-btn-main" data-act="link" href="#" target="_blank" rel="noopener noreferrer">
+          📥 WATCH &amp; DOWNLOAD IN TELEGRAM 📥
+        </a>
+        <div class="tg-btn-row" id="subBtnRow">
+          <a id="btnAnimeNews" class="tg-btn-sub" data-act="link" href="#" target="_blank" rel="noopener noreferrer">• ANIME NEWS •</a>
+          <a id="btnAllBackup" class="tg-btn-sub" data-act="link" href="#" target="_blank" rel="noopener noreferrer">• ALL BACKUP •</a>
+        </div>
+      </div>
 
-    <!-- Synopsis -->
-    <div style="padding:0 16px 20px; font-size:0.82rem; color:var(--text-muted); line-height:1.6;" id="detailSynopsis"></div>
+      <!-- Episode Selector -->
+      <div class="section-header">
+        <div class="section-title"><i class="fa-solid fa-list-ol"></i> Select Episode</div>
+      </div>
+      <div class="ep-ranges" id="epRanges"></div>
+      <div class="ep-grid" id="epGrid"></div>
+
+      <div class="detail-synopsis" id="detailSynopsis"></div>
+
+      <section id="castSection" hidden>
+        <div class="section-header"><div class="section-title"><i class="fa-solid fa-masks-theater"></i> Characters</div></div>
+        <div class="cast-row" id="castRow"></div>
+      </section>
+
+      <section id="recSection" class="section-block" hidden>
+        <div class="section-header"><div class="section-title"><i class="fa-solid fa-thumbs-up"></i> You May Also Like</div></div>
+        <div class="rail-scroll" id="recRail"></div>
+      </section>
+    </div>
   </div>
 
   <!-- FLOATING BOTTOM NAVIGATION BAR -->
   <nav class="bottom-nav">
-    <div class="nav-item active" id="nav-home" onclick="switchTab('home')">
+    <div class="nav-item active" id="nav-home" data-act="tab" data-tab="home">
       <i class="fa-solid fa-house"></i>
       <span>Home</span>
     </div>
-    <div class="nav-item" id="nav-search" onclick="switchTab('search')">
+    <div class="nav-item" id="nav-search" data-act="tab" data-tab="search">
       <i class="fa-solid fa-compass"></i>
       <span>Browse</span>
     </div>
-    <div class="nav-item" id="nav-schedule" onclick="switchTab('schedule')">
+    <div class="nav-item" id="nav-schedule" data-act="tab" data-tab="schedule">
       <i class="fa-solid fa-calendar-days"></i>
       <span>Schedule</span>
     </div>
-    <div class="nav-item" id="nav-watchlist" onclick="switchTab('watchlist')">
+    <div class="nav-item" id="nav-watchlist" data-act="tab" data-tab="watchlist">
       <i class="fa-solid fa-heart"></i>
       <span>My List</span>
     </div>
   </nav>
 
-  <script>
-    // Initialize Telegram Mini App WebApp API
-    const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
-    if (tg) {
-      tg.ready();
-      tg.expand();
-      try {
-        tg.setHeaderColor('#07080d');
-        tg.setBackgroundColor('#07080d');
-      } catch (e) {}
-    }
+  <div class="toast" id="toast" role="status"></div>
 
-    let APP_CONFIG = {
-      app_name: "FlyTon Anime",
-      main_channel_username: "@FlyTon_Anime",
-      main_channel_url: "https://t.me/FlyTon_Anime",
-      news_channel_url: "https://t.me/FlyTon_Anime",
-      backup_channel_url: "https://t.me/FlyTon_Anime",
-      credit_text: "Powered by FlyTon Anime Official"
+  <!-- Server isko apni settings (naam, channel links, colours) se bhar deta hai -->
+  <script>window.__APP_CONFIG__ = {"__inject__": true};</script>
+
+  <script>
+  (function () {
+    'use strict';
+
+    // ------------------------------------------------------------------ basics
+    var tg = (window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : null;
+    var DEFAULT_CFG = {
+      app_name: 'Anime', tagline: '', logo_url: '', credit_text: '', main_channel_username: '',
+      main_channel_url: '', news_channel_url: '', backup_channel_url: '', default_audio: 'Hindi [Dual Audio]',
+      qualities: ['480p', '720p', '1080p'], player_enabled: true, theme: {}
+    };
+    var CFG = Object.assign({}, DEFAULT_CFG);
+
+    var GENRES = [
+      ['ALL', 'All Anime'], ['HINDI', '🇮🇳 Hindi Dub'], ['Action', 'Action'], ['Adventure', 'Adventure'],
+      ['Fantasy', 'Fantasy'], ['Supernatural', 'Supernatural'], ['Romance', 'Romance'], ['Sci-Fi', 'Sci-Fi'],
+      ['Comedy', 'Comedy'], ['Drama', 'Drama'], ['Sports', 'Sports'], ['Mystery', 'Mystery'], ['Slice of Life', 'Slice of Life']
+    ];
+
+    var S = {
+      tab: 'home',
+      anime: null, ep: 1, epPage: 0, lastDetailId: 0,
+      servers: [], serverIdx: 0, playerArmed: false,
+      detailOpen: false, detailSeq: 0,
+      search: { q: '', genre: 'ALL', dub: false, seq: 0, loaded: false },
+      schedule: { items: null, day: null, loading: false }
     };
 
-    let currentAnime = null;
-    let currentEpisode = 1;
-    let searchTimer = null;
+    function $(id) { return document.getElementById(id); }
+    function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+    var ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ESC[c]; }); }
+    function safeUrl(u) { u = String(u || ''); return /^https?:\/\//i.test(u) ? u : ''; }
+
+    var toastTimer = null;
+    function toast(msg) {
+      var t = $('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function () { t.classList.remove('show'); }, 2800);
+    }
+
+    // Server jaag raha ho (Render free) ya network slow ho to apne-aap dobara try karta hai.
+    async function api(path, opts) {
+      var o = Object.assign({ retries: 2, timeout: 25000 }, opts || {});
+      var lastErr = new Error('Network error');
+      for (var i = 0; i <= o.retries; i++) {
+        var ctl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+        var timer = ctl ? setTimeout(function () { ctl.abort(); }, o.timeout) : null;
+        try {
+          var res = await fetch(path, { signal: ctl ? ctl.signal : undefined, headers: { 'Accept': 'application/json' } });
+          if (timer) clearTimeout(timer);
+          var ct = res.headers.get('content-type') || '';
+          if (ct.indexOf('application/json') !== -1) {
+            var data = await res.json();
+            if (res.ok) return data;
+            var err = new Error((data && data.error) || ('HTTP ' + res.status));
+            err.status = res.status;
+            if (res.status === 404 || res.status === 400) throw err;
+            lastErr = err;
+          } else {
+            lastErr = new Error('Server jaag raha hai (HTTP ' + res.status + ')');
+            lastErr.status = res.status;
+          }
+        } catch (e) {
+          if (timer) clearTimeout(timer);
+          if (e && (e.status === 404 || e.status === 400)) throw e;
+          lastErr = e || lastErr;
+        }
+        if (i < o.retries) await sleep(1500 * (i + 1));
+      }
+      throw lastErr;
+    }
+
+    // ------------------------------------------------------------------ config / telegram
+    function hexToGlow(hex) {
+      var m = /^#([0-9a-f]{6})$/i.exec(hex || '');
+      if (!m) return null;
+      var n = parseInt(m[1], 16);
+      return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',0.45)';
+    }
+
+    function applyConfig() {
+      var root = document.documentElement.style;
+      var th = CFG.theme || {};
+      if (th.primary) { root.setProperty('--primary', th.primary); var g = hexToGlow(th.primary); if (g) root.setProperty('--primary-glow', g); }
+      if (th.secondary) root.setProperty('--secondary', th.secondary);
+      if (th.bg) root.setProperty('--bg-main', th.bg);
+      if (th.glass) root.setProperty('--glass-card', th.glass);
+
+      $('appName').textContent = CFG.app_name;
+      $('appChannelTag').textContent = CFG.main_channel_username;
+      var logo = safeUrl(CFG.logo_url);
+      if (logo) $('appLogo').src = logo; else $('appLogo').hidden = true;
+      $('quoteChannelName').textContent = CFG.main_channel_username ? '『' + CFG.main_channel_username + '』' : '';
+      $('footerCredit').textContent = '⚡ ' + CFG.credit_text + (CFG.main_channel_username ? ' • ' + CFG.main_channel_username : '');
+      $('heroAudio').textContent = CFG.default_audio;
+      $('heroQuality').textContent = (CFG.qualities || []).join(' • ');
+      $('playerWrap').hidden = !CFG.player_enabled;
+      setLink($('headerJoinBtn'), CFG.main_channel_url);
+      document.title = CFG.app_name;
+
+      if (tg) {
+        var bg = th.bg || '#07080d';
+        try { tg.setHeaderColor(bg); } catch (e) {}
+        try { tg.setBackgroundColor(bg); } catch (e) {}
+        try { if (tg.setBottomBarColor) tg.setBottomBarColor(bg); } catch (e) {}
+      }
+    }
+
+    function initTelegram() {
+      if (!tg) return;
+      try { tg.ready(); } catch (e) {}
+      try { tg.expand(); } catch (e) {}
+      try { if (tg.isVersionAtLeast && tg.isVersionAtLeast('7.7') && tg.disableVerticalSwipes) tg.disableVerticalSwipes(); } catch (e) {}
+      try { if (tg.BackButton) tg.BackButton.onClick(function () { if (S.detailOpen) closeDetail(); }); } catch (e) {}
+    }
 
     function openExternalLink(url) {
+      url = safeUrl(url);
       if (!url) return;
-      if (tg && url.includes('t.me/')) {
-        tg.openTelegramLink(url);
-      } else if (tg) {
-        tg.openLink(url);
-      } else {
-        window.open(url, '_blank');
-      }
-    }
-
-    function createAnimeCardHTML(item) {
-      const epBadge = item.scheduled_episode
-        ? `EP ${item.scheduled_episode}`
-        : `EP ${item.latest_ep || item.episodes || 12}`;
-      const dubBadge = item.is_hindi_dub ? `<span class="card-dub-pill">HINDI</span>` : '';
-      return `
-        <div class="anime-card" onclick="openAnimeDetail(${item.id})">
-          <div class="poster-wrap">
-            <img src="${item.poster}" alt="${item.title}" loading="lazy" />
-            <span class="card-score">⭐ ${item.score || '8.2'}</span>
-            ${dubBadge}
-            <span class="card-ep-pill">${epBadge}</span>
-          </div>
-          <div class="card-info">
-            <div class="card-title">${item.title}</div>
-            <div class="card-sub">
-              <span>${item.format || 'TV'}</span>
-              <span>${item.season || 'HD'}</span>
-            </div>
-          </div>
-        </div>
-      `;
-    }
-
-    async function loadAppConfig() {
       try {
-        const res = await fetch('/api/config');
-        const cfg = await res.json();
-        APP_CONFIG = { ...APP_CONFIG, ...cfg };
-        document.getElementById('appName').textContent = APP_CONFIG.app_name;
-        document.getElementById('appChannelTag').textContent = APP_CONFIG.main_channel_username;
-        document.getElementById('quoteChannelName').textContent = `『${APP_CONFIG.main_channel_username}』`;
-        document.getElementById('footerCredit').textContent = `⚡ ${APP_CONFIG.credit_text} • ${APP_CONFIG.main_channel_username}`;
-        document.getElementById('headerJoinBtn').href = APP_CONFIG.main_channel_url;
-        if (APP_CONFIG.logo_url) {
-          document.getElementById('appLogo').src = APP_CONFIG.logo_url;
-        }
+        if (tg && /^https?:\/\/(www\.)?(t|telegram)\.me\//i.test(url) && tg.openTelegramLink) tg.openTelegramLink(url);
+        else if (tg && tg.openLink) tg.openLink(url);
+        else window.open(url, '_blank', 'noopener');
       } catch (e) {
-        console.warn('Config load fallback:', e);
+        window.open(url, '_blank', 'noopener');
       }
     }
 
-    async function loadHomeFeed() {
-      try {
-        const res = await fetch('/api/home');
-        const data = await res.json();
-
-        if (data.spotlight && data.spotlight.length > 0) {
-          const hero = data.spotlight[0];
-          document.getElementById('heroBg').style.backgroundImage = `url('${hero.banner || hero.poster}')`;
-          document.getElementById('heroTitle').textContent = hero.title;
-          document.getElementById('heroAudio').textContent = hero.audio_badge;
-          document.getElementById('heroMeta').innerHTML = `
-            <span>⭐ ${hero.score}</span><span>•</span>
-            <span>${hero.format}</span><span>•</span>
-            <span>EP ${hero.latest_ep}</span>
-          `;
-          document.getElementById('heroWatchBtn').onclick = () => openAnimeDetail(hero.id);
-        }
-
-        document.getElementById('railHindi').innerHTML = (data.hindi_dubs || []).map(createAnimeCardHTML).join('');
-        document.getElementById('railTrending').innerHTML = (data.trending || []).map(createAnimeCardHTML).join('');
-        document.getElementById('railAiring').innerHTML = (data.airing || []).map(createAnimeCardHTML).join('');
-        document.getElementById('railMovies').innerHTML = (data.movies || []).map(createAnimeCardHTML).join('');
-      } catch (err) {
-        console.error('Home feed error:', err);
-      }
+    // <a> ko link do; link na ho to button chhupa do (galat/khali link par "dead button" nahi dikhta)
+    function setLink(el, url) {
+      url = safeUrl(url);
+      if (url) { el.setAttribute('href', url); el.dataset.url = url; el.hidden = false; }
+      else { el.setAttribute('href', '#'); el.dataset.url = ''; el.hidden = true; }
     }
 
-    async function openAnimeDetail(animeId) {
-      document.getElementById('detailModal').classList.add('open');
-      document.getElementById('modalTopTitle').textContent = 'Loading...';
+    // ------------------------------------------------------------------ cards & rails
+    function fmtTime(sec) {
+      try { return new Date(sec * 1000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); } catch (e) { return ''; }
+    }
 
+    function fmtScore(v) {
+      var n = Number(v);
+      return (v == null || !isFinite(n) || n <= 0) ? '' : n.toFixed(1);
+    }
+
+    function cardHTML(it) {
+      var poster = safeUrl(it.poster);
+      var sc = fmtScore(it.score);
+      var ep = it.scheduled_episode ? 'EP ' + it.scheduled_episode : (it.latest_ep ? 'EP ' + it.latest_ep : 'TBA');
+      return '<div class="anime-card" data-act="open" data-id="' + esc(it.id) + '">'
+        + '<div class="poster-wrap">' + (poster ? '<img src="' + esc(poster) + '" alt="" loading="lazy" decoding="async">' : '')
+        + (sc ? '<span class="card-score">⭐ ' + sc + '</span>' : '')
+        + (it.is_hindi_dub ? '<span class="card-dub-pill">HINDI</span>' : '')
+        + (it.airing_at ? '<span class="card-time">🕒 ' + esc(fmtTime(it.airing_at)) + '</span>' : '')
+        + '<span class="card-ep-pill">' + esc(ep) + '</span></div>'
+        + '<div class="card-info"><div class="card-title">' + esc(it.title) + '</div>'
+        + '<div class="card-sub"><span>' + esc(it.format || 'TV') + '</span><span>' + esc(it.season || '') + '</span></div></div></div>';
+    }
+
+    function skeletons(n) {
+      var out = '';
+      for (var i = 0; i < n; i++) out += '<div class="sk-card"><div class="sk sk-poster"></div><div class="sk sk-line"></div><div class="sk sk-line" style="width:60%"></div></div>';
+      return out;
+    }
+
+    function stateBox(msg, retryAct) {
+      return '<div class="state-box">' + esc(msg) + (retryAct ? '<br><button data-act="' + retryAct + '">🔄 Dobara try karo</button>' : '') + '</div>';
+    }
+
+    function setRail(id, list, emptyMsg) {
+      $(id).innerHTML = (list && list.length) ? list.map(cardHTML).join('') : stateBox(emptyMsg || 'Kuch nahi mila');
+    }
+
+    // ------------------------------------------------------------------ home
+    function renderHero(h) {
+      if (!h) { $('heroTitle').textContent = CFG.app_name; $('heroMeta').innerHTML = ''; return; }
+      var bg = safeUrl(h.banner || h.poster).replace(/"/g, '%22');
+      $('heroBg').style.backgroundImage = bg ? 'url("' + bg + '")' : '';
+      $('heroTitle').textContent = h.title;
+      $('heroAudio').textContent = h.audio_badge;
+      var meta = [];
+      if (fmtScore(h.score)) meta.push('⭐ ' + fmtScore(h.score));
+      if (h.format) meta.push(esc(h.format));
+      meta.push(h.latest_ep ? 'EP ' + esc(h.latest_ep) : 'Coming soon');
+      $('heroMeta').innerHTML = meta.map(function (m) { return '<span>' + m + '</span>'; }).join('<span>•</span>');
+      $('heroWatchBtn').dataset.id = h.id;
+    }
+
+    async function loadHome() {
+      ['railHindi', 'railTrending', 'railAiring', 'railMovies'].forEach(function (id) { $(id).innerHTML = skeletons(5); });
+      $('heroTitle').textContent = 'Loading...';
+      var wake = setTimeout(function () { $('wakeNote').hidden = false; }, 7000);
       try {
-        const res = await fetch(`/api/anime/${animeId}`);
-        const info = await res.json();
-        currentAnime = info;
-        currentEpisode = 1;
-
-        document.getElementById('modalTopTitle').textContent = info.title;
-        document.getElementById('detailQuoteTitle').textContent = `➲ ${info.title} (${info.season || 'S - 01'})`;
-        document.getElementById('detailAudio').textContent = info.audio_badge;
-        document.getElementById('detailQuality').textContent = (info.qualities || ['480p', '720p', '1080p']).join(', ');
-        document.getElementById('detailGenres').textContent = (info.genres || ['Action', 'Fantasy']).join(', ');
-        document.getElementById('detailMainTag').textContent = `『${APP_CONFIG.main_channel_username}』`;
-        document.getElementById('detailSynopsis').textContent = info.synopsis;
-
-        const btns = info.buttons || {};
-        const watchBtn = document.getElementById('btnWatchDownload');
-        const newsBtn = document.getElementById('btnAnimeNews');
-        const backupBtn = document.getElementById('btnAllBackup');
-
-        watchBtn.onclick = (e) => { e.preventDefault(); openExternalLink(btns.watch_download_url || APP_CONFIG.main_channel_url); };
-        newsBtn.onclick = (e) => { e.preventDefault(); openExternalLink(btns.anime_news_url || APP_CONFIG.news_channel_url); };
-        backupBtn.onclick = (e) => { e.preventDefault(); openExternalLink(btns.all_backup_url || APP_CONFIG.backup_channel_url); };
-
-        const epList = info.episodes_list || [];
-        document.getElementById('epGrid').innerHTML = epList.map(ep => `
-          <div class="ep-pill ${ep.number === 1 ? 'active' : ''}" id="ep-pill-${ep.number}" onclick="selectEpisode(${ep.number})">
-            EP ${String(ep.number).padStart(2, '0')}
-          </div>
-        `).join('');
-
-        updateBookmarkIcon();
-        await selectEpisode(1);
+        var data = await api('/api/home', { retries: 4, timeout: 30000 });
+        renderHero((data.spotlight || [])[0]);
+        setRail('railHindi', data.hindi_dubs, 'Abhi koi Hindi dub anime nahi mila. Owner /set_link se add kar sakta hai.');
+        setRail('railTrending', data.trending);
+        setRail('railAiring', data.airing);
+        setRail('railMovies', data.movies);
       } catch (e) {
-        console.error('Detail error:', e);
+        $('heroTitle').textContent = CFG.app_name;
+        $('heroMeta').innerHTML = '';
+        ['railHindi', 'railTrending', 'railAiring', 'railMovies'].forEach(function (id) {
+          $(id).innerHTML = stateBox('Anime list load nahi ho payi. Internet check karo ya thodi der baad try karo.', 'retry-home');
+        });
+      } finally {
+        clearTimeout(wake);
+        $('wakeNote').hidden = true;
       }
     }
 
-    async function selectEpisode(epNum) {
-      if (!currentAnime) return;
-      currentEpisode = epNum;
-      document.querySelectorAll('.ep-pill').forEach(el => el.classList.remove('active'));
-      const activePill = document.getElementById(`ep-pill-${epNum}`);
-      if (activePill) activePill.classList.add('active');
+    // ------------------------------------------------------------------ search
+    function buildChips() {
+      $('genreChips').innerHTML = GENRES.map(function (g) {
+        return '<span class="chip' + (S.search.genre === g[0] ? ' active' : '') + '" data-act="genre" data-genre="' + esc(g[0]) + '">' + esc(g[1]) + '</span>';
+      }).join('');
+    }
 
-      document.getElementById('detailEpLabel').textContent = String(epNum).padStart(2, '0');
-
+    async function runSearch() {
+      var st = S.search, seq = ++st.seq, grid = $('searchGrid');
+      st.loaded = true;
+      grid.innerHTML = skeletons(9);
+      var genreParam = (st.genre === 'ALL' || st.genre === 'HINDI') ? '' : st.genre;
       try {
-        const res = await fetch(`/api/stream/${currentAnime.id}/${epNum}?slug=${encodeURIComponent(currentAnime.slug)}`);
-        const streamData = await res.json();
-        const servers = streamData.servers || [];
-
-        const serverBar = document.getElementById('serverBar');
-        serverBar.innerHTML = servers.map((srv, idx) => `
-          <button class="srv-btn ${idx === 0 ? 'active' : ''}" onclick="switchServer('${srv.embed_url}', this)">
-            <i class="fa-solid fa-server"></i> ${srv.name}
-          </button>
-        `).join('');
-
-        if (servers.length > 0) {
-          document.getElementById('videoIframe').src = servers[0].embed_url;
-        }
+        var data = await api('/api/search?q=' + encodeURIComponent(st.q) + '&genre=' + encodeURIComponent(genreParam) + '&dub=' + (st.dub ? '1' : '0'), { retries: 2 });
+        if (seq !== st.seq) return; // purana jawab - naya search chal chuka hai
+        grid.innerHTML = (data.results && data.results.length) ? data.results.map(cardHTML).join('') : stateBox('No anime found.');
       } catch (e) {
-        console.error('Stream load error:', e);
+        if (seq !== st.seq) return;
+        st.loaded = false;
+        grid.innerHTML = stateBox('Search load nahi ho paya.', 'retry-search');
       }
     }
 
-    function switchServer(embedUrl, btnEl) {
-      document.querySelectorAll('.srv-btn').forEach(b => b.classList.remove('active'));
-      btnEl.classList.add('active');
-      document.getElementById('videoIframe').src = embedUrl;
-    }
-
-    function closeDetailModal() {
-      document.getElementById('detailModal').classList.remove('open');
-      document.getElementById('videoIframe').src = '';
-    }
-
-    function switchTab(tabName) {
-      document.querySelectorAll('.view-page').forEach(p => p.classList.remove('active'));
-      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-
-      document.getElementById(`view-${tabName}`).classList.add('active');
-      const navEl = document.getElementById(`nav-${tabName}`);
-      if (navEl) navEl.classList.add('active');
-
-      if (tabName === 'search' && !document.getElementById('searchGrid').innerHTML.trim()) {
-        runSearch('', 'ALL', false);
-      } else if (tabName === 'schedule') {
-        loadSchedule();
-      } else if (tabName === 'watchlist') {
-        renderWatchlist();
-      }
-    }
-
-    function debounceSearch() {
+    var searchTimer = null;
+    function onSearchInput() {
       clearTimeout(searchTimer);
-      searchTimer = setTimeout(() => {
-        const q = document.getElementById('searchInput').value.trim();
-        runSearch(q, 'ALL', false);
+      searchTimer = setTimeout(function () {
+        S.search.q = $('searchInput').value.trim();
+        runSearch();
       }, 350);
     }
 
-    function selectGenre(genre, chipEl) {
-      document.querySelectorAll('#genreChips .chip').forEach(c => c.classList.remove('active'));
-      chipEl.classList.add('active');
-      const q = document.getElementById('searchInput').value.trim();
-      if (genre === 'HINDI') {
-        runSearch(q, '', true);
-      } else {
-        runSearch(q, genre, false);
-      }
+    function selectGenre(g) {
+      S.search.genre = g;
+      S.search.dub = (g === 'HINDI');
+      buildChips();
+      runSearch();
     }
 
     function filterHindiDubs() {
       switchTab('search');
-      const chips = document.querySelectorAll('#genreChips .chip');
-      if (chips[1]) selectGenre('HINDI', chips[1]);
+      selectGenre('HINDI');
     }
 
-    async function runSearch(query, genre, dubOnly) {
-      const grid = document.getElementById('searchGrid');
-      grid.innerHTML = '<div style="padding:20px; color:var(--text-muted);">Searching anime...</div>';
-      try {
-        const url = `/api/search?q=${encodeURIComponent(query)}&genre=${encodeURIComponent(genre)}&dub=${dubOnly ? '1' : '0'}`;
-        const res = await fetch(url);
-        const data = await res.json();
-        grid.innerHTML = (data.results || []).map(createAnimeCardHTML).join('') || '<div style="padding:20px;">No anime found.</div>';
-      } catch (e) {
-        grid.innerHTML = '<div style="padding:20px;">Failed to load search results.</div>';
-      }
+    // ------------------------------------------------------------------ schedule
+    function dayKey(sec) { var d = new Date(sec * 1000); return d.getFullYear() + '-' + d.getMonth() + '-' + d.getDate(); }
+    function dayLabel(sec) {
+      var d = new Date(sec * 1000), now = new Date();
+      var a = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+      var b = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+      var diff = Math.round((a - b) / 86400000);
+      if (diff === 0) return 'Today';
+      if (diff === 1) return 'Tomorrow';
+      if (diff === -1) return 'Yesterday';
+      try { return d.toLocaleDateString([], { weekday: 'short', day: 'numeric' }); } catch (e) { return 'Day'; }
+    }
+
+    function renderSchedule() {
+      var items = S.schedule.items || [], days = [], map = {};
+      items.forEach(function (it) {
+        var k = dayKey(it.airing_at);
+        if (!map[k]) { map[k] = { key: k, label: dayLabel(it.airing_at), list: [] }; days.push(map[k]); }
+        map[k].list.push(it);
+      });
+      if (!days.length) { $('dayChips').innerHTML = ''; $('scheduleGrid').innerHTML = stateBox('Is hafte ka schedule abhi available nahi hai.', 'retry-schedule'); return; }
+      if (!S.schedule.day || !map[S.schedule.day]) S.schedule.day = map[dayKey(Date.now() / 1000)] ? dayKey(Date.now() / 1000) : days[0].key;
+      $('dayChips').innerHTML = days.map(function (d) {
+        return '<span class="chip' + (d.key === S.schedule.day ? ' active' : '') + '" data-act="day" data-day="' + esc(d.key) + '">' + esc(d.label) + ' (' + d.list.length + ')</span>';
+      }).join('');
+      $('scheduleGrid').innerHTML = map[S.schedule.day].list.map(cardHTML).join('');
     }
 
     async function loadSchedule() {
-      const grid = document.getElementById('scheduleGrid');
-      if (grid.innerHTML.trim()) return;
-      grid.innerHTML = '<div style="padding:20px; color:var(--text-muted);">Loading airing schedule...</div>';
+      if (S.schedule.items) { renderSchedule(); return; }
+      if (S.schedule.loading) return;
+      S.schedule.loading = true;
+      $('dayChips').innerHTML = '';
+      $('scheduleGrid').innerHTML = skeletons(9);
       try {
-        const res = await fetch('/api/schedule');
-        const data = await res.json();
-        grid.innerHTML = (data.schedule || []).map(createAnimeCardHTML).join('');
+        var data = await api('/api/schedule', { retries: 2 });
+        S.schedule.items = data.schedule || [];
+        renderSchedule();
       } catch (e) {
-        grid.innerHTML = '<div style="padding:20px;">Could not load schedule.</div>';
+        $('scheduleGrid').innerHTML = stateBox('Schedule load nahi ho paya.', 'retry-schedule');
+      } finally {
+        S.schedule.loading = false;
       }
     }
 
-    async function openRandomAnime() {
-      try {
-        const res = await fetch('/api/random');
-        const data = await res.json();
-        if (data && data.id) openAnimeDetail(data.id);
-      } catch (e) {}
+    // ------------------------------------------------------------------ detail
+    function setEpPage(p) { S.epPage = p; buildEpisodes(); }
+
+    function buildEpisodes() {
+      var info = S.anime, total = info.ep_count || 1, PER = 100, html = '';
+      var ranges = '';
+      var from = 1, to = total;
+      if (total > 120) {
+        var pages = Math.ceil(total / PER);
+        for (var p = 0; p < pages; p++) {
+          var a = p * PER + 1, b = Math.min(total, (p + 1) * PER);
+          ranges += '<span class="chip' + (p === S.epPage ? ' active' : '') + '" data-act="eprange" data-page="' + p + '">' + a + '-' + b + '</span>';
+        }
+        from = S.epPage * PER + 1; to = Math.min(total, from + PER - 1);
+      }
+      $('epRanges').innerHTML = ranges;
+      for (var n = from; n <= to; n++) {
+        html += '<div class="ep-pill' + (n === S.ep ? ' active' : '') + '" data-act="ep" data-ep="' + n + '">EP ' + (n < 10 ? '0' + n : n) + '</div>';
+      }
+      $('epGrid').innerHTML = html;
     }
 
+    function currentWatchUrl() {
+      var info = S.anime || {};
+      return (info.episode_links && info.episode_links[String(S.ep)]) || (info.buttons && info.buttons.watch_download_url) || CFG.main_channel_url;
+    }
+
+    function selectEpisode(n) {
+      if (!S.anime) return;
+      S.ep = n;
+      document.querySelectorAll('.ep-pill').forEach(function (el) { el.classList.toggle('active', Number(el.dataset.ep) === n); });
+      $('detailEpLabel').textContent = n < 10 ? '0' + n : String(n);
+      setLink($('btnWatchDownload'), currentWatchUrl()); // us episode ka apna link (agar /set_ep se diya ho)
+      if (CFG.player_enabled) { if (S.playerArmed) loadServers(); else resetPlayer(); }
+    }
+
+    // ---- player
+    // Iframe ko kabhi dobara navigate nahi karte: har baar naya iframe banate/hataate hain.
+    // Warna iframe ki navigation browser history mein judti hai, aur back dabane par band kiya hua video
+    // dobara chalne lagta hai (aur hamara "detail" history-entry bach jaata hai).
+    function setFrame(url) {
+      var old = $('videoIframe');
+      if (old && old.parentNode) old.parentNode.removeChild(old);
+      if (!url) return;
+      var f = document.createElement('iframe');
+      f.id = 'videoIframe';
+      f.title = 'Player';
+      f.setAttribute('allowfullscreen', '');
+      f.setAttribute('allow', 'autoplay; encrypted-media; fullscreen; picture-in-picture');
+      f.src = url;
+      $('playerBox').appendChild(f);
+    }
+
+    function resetPlayer() {
+      setFrame('');
+      $('playerPoster').hidden = false;
+      $('serverBar').innerHTML = '';
+      $('playerNote').hidden = true;
+      var img = S.anime && safeUrl(S.anime.banner || S.anime.poster).replace(/"/g, '%22');
+      $('playerPoster').style.backgroundImage = img ? 'url("' + img + '")' : '';
+    }
+
+    function unloadPlayer() { S.playerArmed = false; S.servers = []; resetPlayer(); }
+
+    function armPlayer() { S.playerArmed = true; loadServers(); }
+
+    function showNote(msg) { var n = $('playerNote'); n.textContent = msg; n.hidden = !msg; }
+
+    async function loadServers() {
+      var seq = S.detailSeq, id = S.anime.id, ep = S.ep;
+      showNote('Servers load ho rahe hain...');
+      try {
+        var data = await api('/api/stream/' + id + '/' + ep + '?slug=' + encodeURIComponent(S.anime.slug || 'anime'), { retries: 1 });
+        if (seq !== S.detailSeq || ep !== S.ep || !S.playerArmed) return;
+        S.servers = (data.servers || []).filter(function (s) { return safeUrl(s.embed_url); });
+        S.serverIdx = 0;
+        if (!S.servers.length) { showNote('Koi streaming server available nahi hai. Neeche "Watch & Download in Telegram" button use karo.'); return; }
+        renderServers();
+        showNote('Video na chale to dusra server chuno ya Telegram button use karo (ye servers 3rd-party hain).');
+        playServer(0);
+      } catch (e) {
+        showNote('Servers load nahi hue. Telegram button use karo.');
+      }
+    }
+
+    function renderServers() {
+      $('serverBar').innerHTML = S.servers.map(function (s, i) {
+        return '<button class="srv-btn' + (i === S.serverIdx ? ' active' : '') + '" data-act="server" data-i="' + i + '"><i class="fa-solid fa-server"></i> ' + esc(s.name) + '</button>';
+      }).join('');
+    }
+
+    function playServer(i) {
+      var s = S.servers[i];
+      if (!s) return;
+      S.serverIdx = i;
+      renderServers();
+      $('playerPoster').hidden = true;
+      setFrame(safeUrl(s.embed_url));
+    }
+
+    // ---- open / close
+    function showDetailError(msg, id) {
+      $('detailBody').hidden = true;
+      var box = $('detailError');
+      box.hidden = false;
+      box.innerHTML = stateBox(msg, id ? 'retry-detail' : '');
+    }
+
+    async function openDetail(id) {
+      if (!id) return;
+      var seq = ++S.detailSeq;
+      S.lastDetailId = id;
+      if (!S.detailOpen) {
+        S.detailOpen = true;
+        try { history.pushState({ detail: 1 }, ''); } catch (e) {}
+        if (tg && tg.BackButton) { try { tg.BackButton.show(); } catch (e) {} }
+      }
+      $('detailModal').classList.add('open');
+      document.body.classList.add('modal-open');
+      $('detailModal').scrollTop = 0;
+      $('modalTopTitle').textContent = 'Loading...';
+      $('detailError').hidden = true;
+      $('detailBody').hidden = false;
+      unloadPlayer();
+
+      var info;
+      try {
+        info = await api('/api/anime/' + id, { retries: 3, timeout: 30000 });
+      } catch (e) {
+        if (seq !== S.detailSeq) return;
+        $('modalTopTitle').textContent = 'Anime Details';
+        showDetailError(e && e.status === 404 ? 'Ye anime nahi mila.' : 'Anime details load nahi ho payi.', e && e.status === 404 ? 0 : id);
+        return;
+      }
+      if (seq !== S.detailSeq) return;
+
+      S.anime = info; S.ep = 1; S.epPage = 0;
+      $('modalTopTitle').textContent = info.title;
+      $('detailQuoteTitle').textContent = '➲ ' + info.title + (info.season ? ' (' + info.season + ')' : '');
+      $('detailAudio').textContent = info.audio_badge;
+      $('detailQuality').textContent = (info.qualities || CFG.qualities).join(', ');
+      $('detailGenres').textContent = (info.genres || []).join(', ') || '-';
+      $('detailMainTag').textContent = CFG.main_channel_username ? '『' + CFG.main_channel_username + '』' : '';
+      $('detailSynopsis').textContent = info.synopsis || '';
+      var b = info.buttons || {};
+      setLink($('btnAnimeNews'), b.anime_news_url || CFG.news_channel_url);
+      setLink($('btnAllBackup'), b.all_backup_url || CFG.backup_channel_url);
+      $('subBtnRow').classList.toggle('single', $('btnAnimeNews').hidden !== $('btnAllBackup').hidden);
+      $('subBtnRow').hidden = $('btnAnimeNews').hidden && $('btnAllBackup').hidden;
+
+      buildEpisodes();
+      selectEpisode(1);
+      updateBookmarkIcon();
+
+      var chars = (info.characters || []).filter(function (c) { return c && c.name; });
+      $('castSection').hidden = !chars.length;
+      $('castRow').innerHTML = chars.map(function (c) {
+        var img = safeUrl(c.image);
+        return '<div class="cast">' + (img ? '<img src="' + esc(img) + '" alt="" loading="lazy">' : '') + '<span>' + esc(c.name) + '</span></div>';
+      }).join('');
+
+      var recs = info.recommendations || [];
+      $('recSection').hidden = !recs.length;
+      $('recRail').innerHTML = recs.map(cardHTML).join('');
+    }
+
+    function closeDetail(fromPop) {
+      if (!S.detailOpen) return;
+      S.detailOpen = false;
+      S.detailSeq++;
+      $('detailModal').classList.remove('open');
+      document.body.classList.remove('modal-open');
+      unloadPlayer();
+      if (tg && tg.BackButton) { try { tg.BackButton.hide(); } catch (e) {} }
+      if (!fromPop && history.state && history.state.detail) { try { history.back(); } catch (e) {} }
+    }
+
+    async function openRandom() {
+      try {
+        var d = await api('/api/random' + (S.anime ? '?not=' + S.anime.id : ''), { retries: 1 });
+        if (d && d.id) openDetail(d.id);
+      } catch (e) { toast('Random anime abhi load nahi hua, dobara try karo'); }
+    }
+
+    // ------------------------------------------------------------------ watchlist
     function getWatchlist() {
-      try {
-        return JSON.parse(localStorage.getItem('flyton_watchlist') || '[]');
-      } catch (e) {
-        return [];
-      }
+      try { var v = JSON.parse(localStorage.getItem('animew_watchlist') || localStorage.getItem('flyton_watchlist') || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; }
+    }
+    function saveWatchlist(list) {
+      try { localStorage.setItem('animew_watchlist', JSON.stringify(list.slice(0, 200))); return true; } catch (e) { return false; }
     }
 
-    function toggleCurrentBookmark() {
-      if (!currentAnime) return;
-      let list = getWatchlist();
-      const exists = list.some(item => item.id === currentAnime.id);
-      if (exists) {
-        list = list.filter(item => item.id !== currentAnime.id);
-      } else {
-        list.unshift({
-          id: currentAnime.id,
-          title: currentAnime.title,
-          poster: currentAnime.poster,
-          score: currentAnime.score,
-          format: currentAnime.format,
-          season: currentAnime.season,
-          latest_ep: currentAnime.latest_ep,
-          is_hindi_dub: currentAnime.is_hindi_dub
-        });
-      }
-      localStorage.setItem('flyton_watchlist', JSON.stringify(list));
+    function toggleBookmark() {
+      if (!S.anime) return;
+      var a = S.anime, list = getWatchlist();
+      var exists = list.some(function (x) { return x.id === a.id; });
+      if (exists) list = list.filter(function (x) { return x.id !== a.id; });
+      else list.unshift({ id: a.id, title: a.title, poster: a.poster, score: a.score, format: a.format, season: a.season, latest_ep: a.latest_ep, is_hindi_dub: a.is_hindi_dub });
+      if (!saveWatchlist(list)) { toast('Is browser me list save nahi ho sakti'); return; }
+      toast(exists ? 'List se hata diya' : 'My List me save ho gaya ❤️');
       updateBookmarkIcon();
     }
 
     function updateBookmarkIcon() {
-      if (!currentAnime) return;
-      const exists = getWatchlist().some(item => item.id === currentAnime.id);
-      document.getElementById('bookmarkBtn').innerHTML = exists
-        ? '<i class="fa-solid fa-bookmark" style="color:var(--primary)"></i>'
-        : '<i class="fa-regular fa-bookmark"></i>';
+      if (!S.anime) return;
+      var exists = getWatchlist().some(function (x) { return x.id === S.anime.id; });
+      $('bookmarkBtn').innerHTML = exists ? '<i class="fa-solid fa-bookmark" style="color:var(--primary)"></i>' : '<i class="fa-regular fa-bookmark"></i>';
     }
 
     function renderWatchlist() {
-      const list = getWatchlist();
-      const grid = document.getElementById('watchlistGrid');
-      if (!list.length) {
-        grid.innerHTML = '<div style="padding:20px; color:var(--text-muted); grid-column:1/-1;">No saved anime yet. Tap the bookmark icon on any anime to save it!</div>';
-        return;
-      }
-      grid.innerHTML = list.map(createAnimeCardHTML).join('');
+      var list = getWatchlist(), grid = $('watchlistGrid');
+      grid.innerHTML = list.length ? list.map(cardHTML).join('') : stateBox('No saved anime yet. Tap the bookmark icon on any anime to save it!');
     }
 
-    window.addEventListener('DOMContentLoaded', async () => {
-      await loadAppConfig();
-      await loadHomeFeed();
+    // ------------------------------------------------------------------ tabs & events
+    function switchTab(name) {
+      if (S.detailOpen) closeDetail();
+      S.tab = name;
+      document.querySelectorAll('.view-page').forEach(function (p) { p.classList.remove('active'); });
+      document.querySelectorAll('.nav-item').forEach(function (n) { n.classList.remove('active'); });
+      $('view-' + name).classList.add('active');
+      var nav = $('nav-' + name);
+      if (nav) nav.classList.add('active');
+      window.scrollTo(0, 0);
+      if (name === 'search') { if (!S.search.loaded) runSearch(); }
+      else if (name === 'schedule') loadSchedule();
+      else if (name === 'watchlist') renderWatchlist();
+    }
+
+    document.addEventListener('click', function (ev) {
+      var el = ev.target.closest ? ev.target.closest('[data-act]') : null;
+      if (!el) return;
+      switch (el.dataset.act) {
+        case 'tab': switchTab(el.dataset.tab); break;
+        case 'open': openDetail(Number(el.dataset.id)); break;
+        case 'random': openRandom(); break;
+        case 'back': closeDetail(); break;
+        case 'bookmark': toggleBookmark(); break;
+        case 'genre': selectGenre(el.dataset.genre); break;
+        case 'ep': selectEpisode(Number(el.dataset.ep)); break;
+        case 'eprange': setEpPage(Number(el.dataset.page)); break;
+        case 'play': armPlayer(); break;
+        case 'server': playServer(Number(el.dataset.i)); break;
+        case 'day': S.schedule.day = el.dataset.day; renderSchedule(); break;
+        case 'dubs': filterHindiDubs(); break;
+        case 'retry-home': loadHome(); break;
+        case 'retry-search': runSearch(); break;
+        case 'retry-schedule': S.schedule.items = null; loadSchedule(); break;
+        case 'retry-detail': openDetail(S.lastDetailId); break;
+        case 'link':
+          if (tg) { ev.preventDefault(); openExternalLink(el.dataset.url || el.getAttribute('href')); }
+          else if (!safeUrl(el.getAttribute('href'))) ev.preventDefault();
+          break;
+      }
     });
+
+    // tuti hui image chhup jaye (khali dabba nahi dikhe)
+    document.addEventListener('error', function (ev) {
+      if (ev.target && ev.target.tagName === 'IMG') ev.target.style.visibility = 'hidden';
+    }, true);
+
+    window.addEventListener('popstate', function () { if (S.detailOpen) closeDetail(true); });
+    $('searchInput').addEventListener('input', onSearchInput);
+    $('searchInput').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { clearTimeout(searchTimer); S.search.q = this.value.trim(); runSearch(); this.blur(); }
+    });
+
+    function startParamId() {
+      var sp = '';
+      try { sp = (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) || ''; } catch (e) {}
+      if (!sp) { try { sp = new URLSearchParams(location.search).get('anime') || ''; } catch (e) {} }
+      var m = /^(?:a|anime)?_?(\d{1,9})$/i.exec(sp);
+      return m ? Number(m[1]) : 0;
+    }
+
+    // ------------------------------------------------------------------ boot
+    async function boot() {
+      initTelegram();
+      buildChips();
+      var injected = window.__APP_CONFIG__ || {};
+      if (injected.__inject__) {
+        try { injected = await api('/api/config', { retries: 3, timeout: 20000 }); } catch (e) { injected = {}; }
+      }
+      CFG = Object.assign({}, DEFAULT_CFG, injected);
+      applyConfig();
+      loadHome();
+      var deep = startParamId();
+      if (deep) openDetail(deep);
+    }
+
+    boot();
+  })();
   </script>
 </body>
 </html>
