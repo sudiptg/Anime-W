@@ -442,7 +442,7 @@
       outline: none;
       color: #fff;
       font-family: inherit;
-      font-size: 16px; /* 16px: iPhone zoom nahi karta */
+      font-size: 16px; /* 16px: stops iPhone from zooming in */
     }
 
     .genre-chips {
@@ -896,7 +896,7 @@
   <!-- VIEW 1: HOME -->
   <main id="view-home" class="view-page active">
     <div class="wake-note" id="wakeNote" hidden>
-      ⏳ Server abhi jaag raha hai (free server kuch der baad so jaata hai). 30-60 second wait karo, apne-aap load ho jayega.
+      ⏳ The server is waking up (the free server goes to sleep after a while). Please wait 30-60 seconds, it will load by itself.
     </div>
 
     <!-- Hero Spotlight -->
@@ -1011,14 +1011,14 @@
     <div id="detailError" class="state-box" hidden></div>
 
     <div id="detailBody">
-      <!-- Player (click karne par hi load hota hai: data bachta hai, ads/popups nahi aate) -->
+      <!-- Player (loads only after a tap: saves data and avoids ads/popups) -->
       <div id="playerWrap">
         <div class="player-container" id="playerBox">
           <div class="player-poster" id="playerPoster" data-act="play">
             <div class="play-btn"><i class="fa-solid fa-play"></i></div>
             <span>Tap to load player</span>
           </div>
-          <!-- iframe yahan JS se banta hai (setFrame) -->
+          <!-- The iframe is created from JS (setFrame) -->
         </div>
         <div class="server-bar" id="serverBar"></div>
         <div class="player-note" id="playerNote" hidden></div>
@@ -1096,7 +1096,7 @@
 
   <div class="toast" id="toast" role="status"></div>
 
-  <!-- Server isko apni settings (naam, channel links, colours) se bhar deta hai -->
+  <!-- The server fills this in from its settings (name, channel links, colours) -->
   <script>window.__APP_CONFIG__ = {"__inject__": true};</script>
 
   <script>
@@ -1142,7 +1142,7 @@
       toastTimer = setTimeout(function () { t.classList.remove('show'); }, 2800);
     }
 
-    // Server jaag raha ho (Render free) ya network slow ho to apne-aap dobara try karta hai.
+    // If the server is waking up (Render free) or the network is slow, it retries by itself.
     async function api(path, opts) {
       var o = Object.assign({ retries: 2, timeout: 25000 }, opts || {});
       var lastErr = new Error('Network error');
@@ -1161,7 +1161,7 @@
             if (res.status === 404 || res.status === 400) throw err;
             lastErr = err;
           } else {
-            lastErr = new Error('Server jaag raha hai (HTTP ' + res.status + ')');
+            lastErr = new Error('Server is waking up (HTTP ' + res.status + ')');
             lastErr.status = res.status;
           }
         } catch (e) {
@@ -1230,7 +1230,7 @@
       }
     }
 
-    // <a> ko link do; link na ho to button chhupa do (galat/khali link par "dead button" nahi dikhta)
+    // Give the <a> its link; if there is no valid link, hide the button so there is no dead button
     function setLink(el, url) {
       url = safeUrl(url);
       if (url) { el.setAttribute('href', url); el.dataset.url = url; el.hidden = false; }
@@ -1268,11 +1268,11 @@
     }
 
     function stateBox(msg, retryAct) {
-      return '<div class="state-box">' + esc(msg) + (retryAct ? '<br><button data-act="' + retryAct + '">🔄 Dobara try karo</button>' : '') + '</div>';
+      return '<div class="state-box">' + esc(msg) + (retryAct ? '<br><button data-act="' + retryAct + '">🔄 Try again</button>' : '') + '</div>';
     }
 
     function setRail(id, list, emptyMsg) {
-      $(id).innerHTML = (list && list.length) ? list.map(cardHTML).join('') : stateBox(emptyMsg || 'Kuch nahi mila');
+      $(id).innerHTML = (list && list.length) ? list.map(cardHTML).join('') : stateBox(emptyMsg || 'Nothing found');
     }
 
     // ------------------------------------------------------------------ home
@@ -1297,7 +1297,7 @@
       try {
         var data = await api('/api/home', { retries: 4, timeout: 30000 });
         renderHero((data.spotlight || [])[0]);
-        setRail('railHindi', data.hindi_dubs, 'Abhi koi Hindi dub anime nahi mila. Owner /set_link se add kar sakta hai.');
+        setRail('railHindi', data.hindi_dubs, 'No Hindi dub anime found yet. The owner can add one with /set_link.');
         setRail('railTrending', data.trending);
         setRail('railAiring', data.airing);
         setRail('railMovies', data.movies);
@@ -1305,7 +1305,7 @@
         $('heroTitle').textContent = CFG.app_name;
         $('heroMeta').innerHTML = '';
         ['railHindi', 'railTrending', 'railAiring', 'railMovies'].forEach(function (id) {
-          $(id).innerHTML = stateBox('Anime list load nahi ho payi. Internet check karo ya thodi der baad try karo.', 'retry-home');
+          $(id).innerHTML = stateBox('Could not load the anime list. Check your internet or try again in a little while.', 'retry-home');
         });
       } finally {
         clearTimeout(wake);
@@ -1327,12 +1327,12 @@
       var genreParam = (st.genre === 'ALL' || st.genre === 'HINDI') ? '' : st.genre;
       try {
         var data = await api('/api/search?q=' + encodeURIComponent(st.q) + '&genre=' + encodeURIComponent(genreParam) + '&dub=' + (st.dub ? '1' : '0'), { retries: 2 });
-        if (seq !== st.seq) return; // purana jawab - naya search chal chuka hai
+        if (seq !== st.seq) return; // stale response - a newer search has already started
         grid.innerHTML = (data.results && data.results.length) ? data.results.map(cardHTML).join('') : stateBox('No anime found.');
       } catch (e) {
         if (seq !== st.seq) return;
         st.loaded = false;
-        grid.innerHTML = stateBox('Search load nahi ho paya.', 'retry-search');
+        grid.innerHTML = stateBox('Could not load the search results.', 'retry-search');
       }
     }
 
@@ -1377,7 +1377,7 @@
         if (!map[k]) { map[k] = { key: k, label: dayLabel(it.airing_at), list: [] }; days.push(map[k]); }
         map[k].list.push(it);
       });
-      if (!days.length) { $('dayChips').innerHTML = ''; $('scheduleGrid').innerHTML = stateBox('Is hafte ka schedule abhi available nahi hai.', 'retry-schedule'); return; }
+      if (!days.length) { $('dayChips').innerHTML = ''; $('scheduleGrid').innerHTML = stateBox('The schedule for this week is not available right now.', 'retry-schedule'); return; }
       if (!S.schedule.day || !map[S.schedule.day]) S.schedule.day = map[dayKey(Date.now() / 1000)] ? dayKey(Date.now() / 1000) : days[0].key;
       $('dayChips').innerHTML = days.map(function (d) {
         return '<span class="chip' + (d.key === S.schedule.day ? ' active' : '') + '" data-act="day" data-day="' + esc(d.key) + '">' + esc(d.label) + ' (' + d.list.length + ')</span>';
@@ -1396,7 +1396,7 @@
         S.schedule.items = data.schedule || [];
         renderSchedule();
       } catch (e) {
-        $('scheduleGrid').innerHTML = stateBox('Schedule load nahi ho paya.', 'retry-schedule');
+        $('scheduleGrid').innerHTML = stateBox('Could not load the schedule.', 'retry-schedule');
       } finally {
         S.schedule.loading = false;
       }
@@ -1434,14 +1434,14 @@
       S.ep = n;
       document.querySelectorAll('.ep-pill').forEach(function (el) { el.classList.toggle('active', Number(el.dataset.ep) === n); });
       $('detailEpLabel').textContent = n < 10 ? '0' + n : String(n);
-      setLink($('btnWatchDownload'), currentWatchUrl()); // us episode ka apna link (agar /set_ep se diya ho)
+      setLink($('btnWatchDownload'), currentWatchUrl()); // the episode's own link (if one was set with /set_ep)
       if (CFG.player_enabled) { if (S.playerArmed) loadServers(); else resetPlayer(); }
     }
 
     // ---- player
-    // Iframe ko kabhi dobara navigate nahi karte: har baar naya iframe banate/hataate hain.
-    // Warna iframe ki navigation browser history mein judti hai, aur back dabane par band kiya hua video
-    // dobara chalne lagta hai (aur hamara "detail" history-entry bach jaata hai).
+    // Never navigate an existing iframe: create/remove a fresh iframe each time.
+    // Otherwise the iframe's navigation is added to the browser history, and pressing Back makes a video
+    // that was closed start playing again (and leaves our "detail" history entry behind).
     function setFrame(url) {
       var old = $('videoIframe');
       if (old && old.parentNode) old.parentNode.removeChild(old);
@@ -1470,20 +1470,30 @@
 
     function showNote(msg) { var n = $('playerNote'); n.textContent = msg; n.hidden = !msg; }
 
+    // The AniList YouTube trailer (if any). It always plays, so it shows whether the problem is the
+    // player itself or the third-party video servers.
+    function trailerUrl(a) {
+      var t = a && a.trailer;
+      if (!t || String(t.site).toLowerCase() !== 'youtube' || !/^[A-Za-z0-9_-]{6,20}$/.test(String(t.id || ''))) return '';
+      return 'https://www.youtube-nocookie.com/embed/' + t.id + '?playsinline=1&rel=0';
+    }
+
     async function loadServers() {
       var seq = S.detailSeq, id = S.anime.id, ep = S.ep;
-      showNote('Servers load ho rahe hain...');
+      showNote('Loading servers...');
       try {
         var data = await api('/api/stream/' + id + '/' + ep + '?slug=' + encodeURIComponent(S.anime.slug || 'anime'), { retries: 1 });
         if (seq !== S.detailSeq || ep !== S.ep || !S.playerArmed) return;
         S.servers = (data.servers || []).filter(function (s) { return safeUrl(s.embed_url); });
+        var tr = trailerUrl(S.anime);
+        if (tr) S.servers.push({ id: 'trailer', name: '▶ Trailer', embed_url: tr });
         S.serverIdx = 0;
-        if (!S.servers.length) { showNote('Koi streaming server available nahi hai. Neeche "Watch & Download in Telegram" button use karo.'); return; }
+        if (!S.servers.length) { showNote('No streaming server is available. Use the Telegram button below.'); return; }
         renderServers();
-        showNote('Video na chale to dusra server chuno ya Telegram button use karo (ye servers 3rd-party hain).');
+        showNote('If the video does not play, try another server. These servers play Japanese (Sub) or English (Dub) only. For Hindi, use the Telegram button below.');
         playServer(0);
       } catch (e) {
-        showNote('Servers load nahi hue. Telegram button use karo.');
+        showNote('Could not load the servers. Use the Telegram button below.');
       }
     }
 
@@ -1533,7 +1543,7 @@
       } catch (e) {
         if (seq !== S.detailSeq) return;
         $('modalTopTitle').textContent = 'Anime Details';
-        showDetailError(e && e.status === 404 ? 'Ye anime nahi mila.' : 'Anime details load nahi ho payi.', e && e.status === 404 ? 0 : id);
+        showDetailError(e && e.status === 404 ? 'Anime not found.' : 'Could not load the anime details.', e && e.status === 404 ? 0 : id);
         return;
       }
       if (seq !== S.detailSeq) return;
@@ -1583,7 +1593,7 @@
       try {
         var d = await api('/api/random' + (S.anime ? '?not=' + S.anime.id : ''), { retries: 1 });
         if (d && d.id) openDetail(d.id);
-      } catch (e) { toast('Random anime abhi load nahi hua, dobara try karo'); }
+      } catch (e) { toast('Could not load a random anime, please try again'); }
     }
 
     // ------------------------------------------------------------------ watchlist
@@ -1600,8 +1610,8 @@
       var exists = list.some(function (x) { return x.id === a.id; });
       if (exists) list = list.filter(function (x) { return x.id !== a.id; });
       else list.unshift({ id: a.id, title: a.title, poster: a.poster, score: a.score, format: a.format, season: a.season, latest_ep: a.latest_ep, is_hindi_dub: a.is_hindi_dub });
-      if (!saveWatchlist(list)) { toast('Is browser me list save nahi ho sakti'); return; }
-      toast(exists ? 'List se hata diya' : 'My List me save ho gaya ❤️');
+      if (!saveWatchlist(list)) { toast('Your list cannot be saved in this browser'); return; }
+      toast(exists ? 'Removed from My List' : 'Saved to My List ❤️');
       updateBookmarkIcon();
     }
 
@@ -1658,7 +1668,7 @@
       }
     });
 
-    // tuti hui image chhup jaye (khali dabba nahi dikhe)
+    // hide a broken image (so no empty box is shown)
     document.addEventListener('error', function (ev) {
       if (ev.target && ev.target.tagName === 'IMG') ev.target.style.visibility = 'hidden';
     }, true);
