@@ -2,12 +2,12 @@
 """
 Anime-W  -  Telegram Mini App + Blogger widget backend (Flask)
 ===============================================================
-Kya karta hai:
-  * index.html (Mini App) serve karta hai + AniList se anime data deta hai (/api/...)
-  * Telegram bot (webhook): /start /app /id  +  owner ke liye /set_link /set_ep /del_link /links /status /refresh
-  * /set_link wale links MongoDB me save hote hain (Render restart par bhi bache rehte hain)
+What it does:
+  * serves index.html (the Mini App) and provides anime data from AniList (/api/...)
+  * Telegram bot (webhook): /start /app /id  +  owner-only /set_link /set_ep /del_link /links /status /refresh
+  * links saved with /set_link are stored in MongoDB (they survive Render restarts)
 
-Chalane ka tareeka (Render Start Command):   python app.py
+How to run (Render Start Command):   python app.py
 """
 import copy
 import hmac
@@ -55,15 +55,15 @@ def esc(s) -> str:
 
 
 def _scrub(text: str) -> str:
-    """Logs / replies me kabhi token ya DB password na jaye."""
+    """Make sure a token or DB password never ends up in logs or replies."""
     text = str(text)
     if Config.BOT_TOKEN:
         text = text.replace(Config.BOT_TOKEN, "***")
     return re.sub(r"mongodb(\+srv)?://[^\s'\"]+", "mongodb://***", text)
 
 
-app = Flask(__name__, static_folder=None)  # static_folder=None: project ki files (config.py, .json ...) bahar nahi dikhengi
-app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)  # Render proxy ke peeche sahi https URL
+app = Flask(__name__, static_folder=None)  # static_folder=None: project files (config.py, .json ...) are never served
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)  # correct https URL behind Render's proxy
 try:
     app.json.sort_keys = False
     app.json.ensure_ascii = False
@@ -71,9 +71,9 @@ except Exception:  # pragma: no cover
     pass
 
 # =============================================================================
-# 1. HINDI DUB LIST  (AniList ID -> title ka keyword)
-#    Keyword se app khud check karta hai ki ID sahi anime ki hai ya nahi.
-#    Galat ID wala anime "Hindi Dub" nahi dikhaya jaata.
+# 1. HINDI DUB LIST  (AniList ID -> title keyword)
+#    The app checks the keyword itself to make sure the ID really is that anime.
+#    An anime with a wrong ID is not shown as "Hindi Dub".
 # =============================================================================
 HINDI_DUB_SEEDS = {
     151807: "solo leveling|ore dake level",
@@ -112,7 +112,7 @@ HINDI_DUB_SEEDS = {
     104578: "vinland",
     98659: "classroom of the elite|youkoso jitsuryoku",
 }
-HINDI_DUB_ANILIST_IDS = set(HINDI_DUB_SEEDS)  # purana naam
+HINDI_DUB_ANILIST_IDS = set(HINDI_DUB_SEEDS)  # old name
 
 
 def seed_matches(aid: int, media: dict) -> bool:
@@ -125,7 +125,7 @@ def seed_matches(aid: int, media: dict) -> bool:
 
 
 # =============================================================================
-# 2. CACHE  (AniList ki limit bachane ke liye; fail hone par purana data dikhata hai)
+# 2. CACHE  (saves AniList's rate limit; shows old data when AniList fails)
 # =============================================================================
 API_CACHE = {}
 _CACHE_LOCK = threading.Lock()
@@ -160,7 +160,7 @@ def set_cached(key: str, data, ttl: int = None) -> None:
 
 
 def invalidate_dub_caches() -> None:
-    """Link badalne par Hindi rail / dub-search purane na rahein."""
+    """When a link changes, the Hindi rail / dub search must not keep stale data."""
     with _CACHE_LOCK:
         for k in list(API_CACHE):
             if k == "home_feed" or (k.startswith("search|") and k.endswith("|1")):
@@ -168,15 +168,15 @@ def invalidate_dub_caches() -> None:
 
 
 # =============================================================================
-# 3. LINK STORE  (/set_link ka data - MongoDB me, restart par bhi safe)
+# 3. LINK STORE  (data of /set_link - kept in MongoDB, safe across restarts)
 # =============================================================================
 class LinkStore:
     """
     {"151807": {"telegram_url": "...", "episodes": {"1": "..."}, "title": "Solo Leveling"}}
-    * MONGO_URI(s) ho to har badlav sab clusters me save hota hai; sabse naya `ver` jeetta hai.
-    * Koi cluster down ho to skip, wapas aane par heal ho jata hai.
-    * DB configured hai par ek bhi padh nahi paya -> likhna band (warna purana data overwrite ho sakta tha).
-    * MONGO_URI na ho to sirf local file (Render par restart/sleep me ud jaati hai).
+    * If MONGO_URI(s) are set, every change is saved to all clusters; the newest `ver` wins.
+    * A cluster that is down is skipped and healed when it comes back.
+    * If a DB is configured but none can be read -> writing is blocked (otherwise old data could be overwritten).
+    * Without MONGO_URI only a local file is used (it is lost on a Render restart/sleep).
     """
 
     DOC_ID = "custom_links"
@@ -226,11 +226,11 @@ class LinkStore:
         except FileNotFoundError:
             return None
         except Exception as e:
-            log(f"[Links] local file padh nahi paya: {_scrub(e)}")
+            log(f"[Links] could not read the local file: {_scrub(e)}")
             return None
         if isinstance(data, dict) and isinstance(data.get("links"), dict):
             return {"ver": int(data.get("ver") or 0), "ts": float(data.get("ts") or 0), "links": self._valid_links(data["links"])}
-        links = self._valid_links(data)  # purana flat format
+        links = self._valid_links(data)  # old flat format
         return {"ver": 1 if links else 0, "ts": 0.0, "links": links}
 
     def _write_local(self) -> None:
@@ -249,7 +249,7 @@ class LinkStore:
         try:
             from pymongo import MongoClient
         except Exception:
-            raise RuntimeError("pymongo install nahi hai (requirements.txt me pymongo hona chahiye)") from None
+            raise RuntimeError("pymongo is not installed (requirements.txt must contain pymongo)") from None
         kw = dict(serverSelectionTimeoutMS=6000, connectTimeoutMS=6000, socketTimeoutMS=15000,
                   appName="flyton-miniapp", maxPoolSize=3, retryWrites=True)
         low = node["uri"].lower()
@@ -328,7 +328,7 @@ class LinkStore:
                     continue
                 any_ok = True
                 key, cur = (doc["ver"], doc["ts"]), (best["ver"], best["ts"])
-                # cloud, local file se barabari me jeetta hai; do clusters barabar hon to pehla cluster
+                # the cloud wins a tie with the local file; if two clusters tie, the first cluster wins
                 if key > cur or (key == cur and best["src"] in ("file", "empty")):
                     best = dict(doc, src=node["label"])
             self.links, self.ver, self.ts, self.loaded_from = best["links"], best["ver"], best["ts"], best["src"]
@@ -344,7 +344,7 @@ class LinkStore:
             return
         changed = False
         with self._wlock:
-            # 1) jo cluster abhi tak padha nahi gaya / fail hua tha use pehle PADHO (naya data mile to apna lo)
+            # 1) first READ any cluster that has not been read yet / failed (if it has newer data, adopt it)
             for node in self._nodes:
                 if node["ok"] is True:
                     continue
@@ -356,7 +356,7 @@ class LinkStore:
                     self.links, self.ver, self.ts, self.loaded_from = doc["links"], doc["ver"], doc["ts"], node["label"]
                     self._write_local()
                     changed = True
-            # 2) phir jo cluster peeche reh gaye unhe naya data bhejo
+            # 2) then push the newest data to the clusters that are behind
             for node in self._nodes:
                 if node["ok"] is True and node["ver"] < self.ver:
                     self._push(node)
@@ -458,7 +458,7 @@ class LinkStore:
 STORE = LinkStore(Config.mongo_uris(), Config.MONGO_DB_NAME, Config.MONGO_COLLECTION,
                   os.path.join(BASE_DIR, Config.LINKS_FILE) if not os.path.isabs(Config.LINKS_FILE) else Config.LINKS_FILE)
 STORE.on_change = invalidate_dub_caches
-CUSTOM_LINKS = STORE.links  # (purana naam; live data ke liye STORE.links use hota hai)
+CUSTOM_LINKS = STORE.links  # (old name; STORE.links holds the live data)
 
 
 # =============================================================================
@@ -489,7 +489,7 @@ description(asHtml: false)
 trailer { id site }
 """
 
-MEDIA_FRAGMENT = DETAIL_FRAGMENT  # purana naam
+MEDIA_FRAGMENT = DETAIL_FRAGMENT  # old name
 
 _ANILIST_CALLS = deque()
 _ANILIST_LOCK = threading.Lock()
@@ -509,7 +509,7 @@ def _budget_ok() -> bool:
 
 
 def anilist_request(query: str, variables: dict = None) -> dict:
-    """AniList ko call. Hamesha dict deta hai: success me {"data": {...}}, fail me {"data": None, "errors": [...], "_status": N}."""
+    """Call AniList. Always returns a dict: {"data": {...}} on success, {"data": None, "errors": [...], "_status": N} on failure."""
     if not _budget_ok():
         return {"data": None, "errors": [{"message": "AniList busy (rate limit)", "status": 429}], "_status": 429}
     payload = json.dumps({"query": query, "variables": variables or {}}).encode("utf-8")
@@ -546,7 +546,7 @@ def anilist_request(query: str, variables: dict = None) -> dict:
                     wait = 30
                 ANILIST_STATE["blocked_until"] = time.time() + min(max(wait, 5), 90)
                 ANILIST_STATE["last_error"] = "429 Too Many Requests (AniList rate limit)"
-                log("[AniList] 429 rate limit - kuch der ruk raha hoon")
+                log("[AniList] 429 rate limit - pausing for a while")
                 return body
             if e.code >= 500 and attempt == 0:
                 time.sleep(0.8)
@@ -567,7 +567,7 @@ def _page_media(data, alias: str) -> list:
     return [m for m in _l(_d(_d(data).get(alias)).get("media")) if isinstance(m, dict)]
 
 
-def api_unavailable(msg: str = "Anime data abhi load nahi ho paya. Thodi der baad try karo."):
+def api_unavailable(msg: str = "Could not load anime data right now. Please try again in a little while."):
     wait = int(ANILIST_STATE["blocked_until"] - time.time())
     wait = wait if wait > 0 else 8
     resp = jsonify({"error": msg, "retry_after": wait})
@@ -765,11 +765,11 @@ def render_index() -> str:
 
 @app.route("/")
 def serve_index():
-    """Telegram Mini App / Web Portal UI (config seedha page me daal diya jaata hai: koi flash nahi)."""
+    """Telegram Mini App / web portal UI (the config is injected straight into the page, so there is no flash of default text)."""
     try:
         page = render_index()
     except OSError:
-        return Response("index.html nahi mila - GitHub repo me index.html upload karo.", 500, mimetype="text/plain")
+        return Response("index.html not found - upload index.html to your GitHub repo.", 500, mimetype="text/plain")
     resp = Response(page, mimetype="text/html")
     resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     return resp
@@ -792,7 +792,7 @@ def api_config():
 
 
 def _get_home_raw():
-    """(data, is_stale). AniList fail ho to purana cache; kuch bhi na ho to (None, False)."""
+    """(data, is_stale). If AniList fails, the old cache is used; if there is nothing at all -> (None, False)."""
     key = "home_feed"
     data = get_cached(key)
     if data is not None:
@@ -821,12 +821,12 @@ def _get_home_raw():
 
 @app.route("/api/home")
 def api_home():
-    """Trending, Airing, Popular, Movies aur Hindi Dubbed - ek hi call me."""
+    """Trending, Airing, Popular, Movies and Hindi Dubbed - in a single call."""
     d, stale = _get_home_raw()
     if d is None:
         return api_unavailable()
     dubs = [n for n in _norm_list(_page_media(d, "hindiDubs")) if n["is_hindi_dub"]]
-    dubs.sort(key=lambda n: 0 if n["has_custom_link"] else 1)  # tumhare /set_link wale pehle
+    dubs.sort(key=lambda n: 0 if n["has_custom_link"] else 1)  # anime with your /set_link links first
     trending = _norm_list(_page_media(d, "trending"))
     result = {
         "branding": {"app_name": Config.APP_NAME, "credit": Config.CREDIT_TEXT,
@@ -847,7 +847,7 @@ _GENRE_RE = re.compile(r"^[A-Za-z][A-Za-z \-]{1,30}$")
 
 @app.route("/api/search")
 def api_search():
-    """Title / genre / Hindi-dub filter se search."""
+    """Search by title / genre / Hindi-dub filter."""
     q = re.sub(r"\s+", " ", request.args.get("q") or "").strip()[:80]
     genre = (request.args.get("genre") or "").strip()[:30]
     if genre.upper() == "ALL" or not _GENRE_RE.match(genre):
@@ -883,7 +883,7 @@ def api_search():
                 d = raw.get("data")
                 if isinstance(d, dict) and isinstance(d.get("Page"), dict):
                     results = _page_media({"p": d["Page"]}, "p")
-                    set_cached(key, results, Config.CACHE_TTL_SECONDS)  # sirf SAFAL jawab cache hota hai
+                    set_cached(key, results, Config.CACHE_TTL_SECONDS)  # only SUCCESSFUL answers are cached
                 else:
                     results = get_cached(key, allow_stale=True)
                     stale = results is not None
@@ -897,7 +897,7 @@ def api_search():
 
 @app.route("/api/schedule")
 def api_schedule():
-    """Is hafte ke popular airing anime, unke agle episode ke time ke hisaab se."""
+    """This week's popular airing anime, ordered by the time of their next episode."""
     key = "schedule"
     media = get_cached(key)
     stale = False
@@ -946,7 +946,7 @@ def api_schedule():
 
 @app.route("/api/anime/<int:anime_id>")
 def api_anime_detail(anime_id: int):
-    """Poori detail + characters + recommendations."""
+    """Full detail + characters + recommendations."""
     key = f"detail|{anime_id}"
     media = get_cached(key)
     stale = False
@@ -1011,7 +1011,7 @@ def api_anime_detail(anime_id: int):
 
 @app.route("/api/stream/<int:anime_id>/<int:ep_num>")
 def api_episode_stream(anime_id: int, ep_num: int):
-    """Embed servers + Telegram Watch/Download links (us episode ke liye)."""
+    """Embed servers + Telegram Watch/Download links (for that episode)."""
     slug = re.sub(r"[^a-z0-9-]", "", (request.args.get("slug") or "anime").lower())[:80] or "anime"
     ep_num = max(1, min(ep_num, MAX_EPISODES))
     link = _d(STORE.get(anime_id))
@@ -1034,7 +1034,7 @@ def api_episode_stream(anime_id: int, ep_num: int):
 
 @app.route("/api/random")
 def api_random_anime():
-    """Dice button: kisi bhi popular anime ki ID (sirf ID - detail UI khud kholta hai)."""
+    """Dice button: the ID of any popular anime (just the ID - the UI opens the detail itself)."""
     d, _stale = _get_home_raw()
     if d is None:
         return api_unavailable()
@@ -1053,8 +1053,8 @@ def api_random_anime():
 @app.route("/blogger-widget.js")
 def blogger_embed_script():
     """
-    Blogger me 1 line:   <script src="https://YOUR-APP.onrender.com/blogger-widget.js"></script>
-    (chaho to  <div id="anime-w-app"></div>  daalo - widget usi ke andar dikhega; height ke liye data-height="800px")
+    In Blogger, 1 line:   <script src="https://YOUR-APP.onrender.com/blogger-widget.js"></script>
+    (optionally add  <div id="anime-w-app"></div>  - the widget will appear inside it; use data-height="800px" for the height)
     """
     base_url = Config.WEB_APP_URL or request.host_url.rstrip("/")
     src = json.dumps(base_url + "/?embed=blogger")
@@ -1086,7 +1086,7 @@ def blogger_embed_script():
 
 
 # =============================================================================
-# 8. TELEGRAM BOT  (webhook: Render sleep me bhi bot ko message milte hi server jaag jaata hai)
+# 8. TELEGRAM BOT  (webhook: even when Render is asleep, the server wakes up as soon as the bot gets a message)
 # =============================================================================
 BOT = {"id": None, "username": ""}
 TG_STATE = {"token_ok": None, "webhook_ok": None, "menu_ok": None, "commands_ok": None, "error": "",
@@ -1097,7 +1097,7 @@ _SEEN_LOCK = threading.Lock()
 
 def tg_call(method: str, payload: dict = None, timeout: int = 15) -> dict:
     if not Config.BOT_TOKEN:
-        return {"ok": False, "description": "BOT_TOKEN set nahi hai"}
+        return {"ok": False, "description": "BOT_TOKEN is not set"}
     url = f"https://api.telegram.org/bot{Config.BOT_TOKEN}/{method}"
     req = urllib.request.Request(url, data=json.dumps(payload or {}).encode("utf-8"),
                                  headers={"Content-Type": "application/json"})
@@ -1123,11 +1123,11 @@ def webhook_url() -> str:
 
 
 def init_telegram() -> None:
-    """Start par ek baar: bot check, menu button, webhook, commands. Background thread me chalta hai."""
+    """Runs once at startup: bot check, menu button, webhook, commands. Runs in a background thread."""
     st = TG_STATE
     try:
         if not Config.BOT_TOKEN:
-            st["error"] = "BOT_TOKEN set nahi hai - sirf web app chalega, bot nahi"
+            st["error"] = "BOT_TOKEN is not set - only the web app will run, not the bot"
             log("[MiniApp Bot] " + st["error"])
             return
         me = tg_call("getMe")
@@ -1138,7 +1138,7 @@ def init_telegram() -> None:
             me = tg_call("getMe")
         if not me.get("ok"):
             st["token_ok"] = False
-            st["error"] = "BOT_TOKEN galat hai ya Telegram se connect nahi hua: " + _scrub(me.get("description"))
+            st["error"] = "BOT_TOKEN is invalid or Telegram could not be reached: " + _scrub(me.get("description"))
             log("[MiniApp Bot] " + st["error"])
             return
         st["token_ok"] = True
@@ -1147,8 +1147,8 @@ def init_telegram() -> None:
         log(f"[MiniApp Bot] bot = @{BOT['username']}")
 
         if not Config.WEB_APP_URL_OK:
-            st["error"] = ("WEB_APP_URL https nahi mila. Render me WEB_APP_URL=https://tumhara-app.onrender.com daalo "
-                           "(normally Render khud RENDER_EXTERNAL_URL deta hai)")
+            st["error"] = ("No https WEB_APP_URL found. Set WEB_APP_URL=https://your-app.onrender.com in Render "
+                           "(normally Render provides RENDER_EXTERNAL_URL itself)")
             log("[MiniApp Bot] " + st["error"])
             return
 
@@ -1171,12 +1171,12 @@ def init_telegram() -> None:
         tg_call("setMyCommands", {"commands": public_cmds, "scope": {"type": "default"}})
         if Config.OWNER_IDS:
             owner_cmds = public_cmds + [
-                {"command": "set_link", "description": "Anime ka Telegram link set karo"},
-                {"command": "set_ep", "description": "Kisi episode ka link set karo"},
-                {"command": "del_link", "description": "Link hatao"},
-                {"command": "links", "description": "Saare saved links"},
+                {"command": "set_link", "description": "Set the Telegram link of an anime"},
+                {"command": "set_ep", "description": "Set the link of one episode"},
+                {"command": "del_link", "description": "Remove a link"},
+                {"command": "links", "description": "All saved links"},
                 {"command": "status", "description": "Bot / DB / AniList status"},
-                {"command": "refresh", "description": "Cache saaf karo"},
+                {"command": "refresh", "description": "Clear the cache"},
             ]
             for oid in Config.OWNER_IDS:
                 tg_call("setMyCommands", {"commands": owner_cmds, "scope": {"type": "chat", "chat_id": oid}})
@@ -1209,7 +1209,7 @@ def tg_send(chat_id, text: str, markup=None) -> dict:
         return res
     desc = str(res.get("description", "")).lower()
     if markup and any(w in desc for w in ("button", "url", "web_app", "reply markup")):
-        safe = _strip_url_buttons(markup)  # ek galat link poora message na rok de
+        safe = _strip_url_buttons(markup)  # one bad link must not block the whole message
         retry = dict(payload)
         if safe:
             retry["reply_markup"] = safe
@@ -1240,7 +1240,7 @@ def welcome_markup(private: bool) -> dict:
     rows = []
     label = f"🚀 OPEN {Config.APP_NAME.upper()} MINI APP 🚀"[:60]
     if Config.WEB_APP_URL_OK and private:
-        rows.append([{"text": label, "web_app": {"url": Config.WEB_APP_URL}}])  # web_app button sirf private chat me chalta hai
+        rows.append([{"text": label, "web_app": {"url": Config.WEB_APP_URL}}])  # a web_app button only works in a private chat
     elif BOT["username"]:
         rows.append([{"text": label, "url": f"https://t.me/{BOT['username']}?startapp"}])
     sub = []
@@ -1264,7 +1264,7 @@ def parse_command(text: str):
         return None, ""
     cmd, target, rest = m.group(1).lower(), m.group(2), (m.group(3) or "").strip()
     if target and BOT["username"] and target.lower() != BOT["username"].lower():
-        return None, ""  # kisi aur bot ke liye hai
+        return None, ""  # meant for another bot
     return cmd, rest
 
 
@@ -1279,7 +1279,7 @@ def parse_anime_id(token: str):
 
 
 def clean_link(raw: str) -> str:
-    """'@channel', 't.me/x', 'https://...' -> saaf https link; galat ho to ''."""
+    """'@channel', 't.me/x', 'https://...' -> a clean https link; '' if invalid."""
     return tg_url(raw, "")
 
 
@@ -1288,7 +1288,7 @@ def is_owner(user_id) -> bool:
 
 
 def lookup_title(aid: int) -> str:
-    """Confirmation message ke liye anime ka naam (fail ho to khali)."""
+    """The anime's name for the confirmation message (empty if the lookup fails)."""
     media = get_cached(f"detail|{aid}", allow_stale=True)
     if not isinstance(media, dict):
         key = f"title|{aid}"
@@ -1307,21 +1307,21 @@ def lookup_title(aid: int) -> str:
 
 def _db_line(res: dict) -> str:
     if not STORE.persistent:
-        return ("⚠️ <b>MongoDB set nahi hai</b> - ye link Render restart/sleep ke baad ud jayega. "
-                "Render → Environment me <code>MONGO_URI</code> daalo.")
+        return ("⚠️ <b>MongoDB is not set</b> - this link will be lost after a Render restart/sleep. "
+                "Add <code>MONGO_URI</code> in Render → Environment.")
     if res.get("persisted", 0) >= 1:
-        return f"💾 Database me save ✅ ({res['persisted']}/{res['total']})"
-    return "⚠️ Database me save nahi ho paya (abhi sirf memory me hai). <code>/status</code> check karo."
+        return f"💾 Saved to the database ✅ ({res['persisted']}/{res['total']})"
+    return "⚠️ Could not save to the database (it is only in memory for now). Check <code>/status</code>."
 
 
 def _db_down_reply() -> str:
-    return ("⚠️ Database abhi connect nahi hai, isliye save nahi kiya (warna purana data overwrite ho sakta tha). "
-            "1-2 minute baad dobara try karo ya <code>/status</code> dekho.")
+    return ("⚠️ The database is not connected right now, so nothing was saved (otherwise old data could have been overwritten). "
+            "Try again in 1-2 minutes or check <code>/status</code>.")
 
 
-USAGE_SET_LINK = ("<b>Use:</b> <code>/set_link [AniList ID ya AniList link] [Telegram link]</code>\n"
+USAGE_SET_LINK = ("<b>Use:</b> <code>/set_link [AniList ID or AniList link] [Telegram link]</code>\n"
                   "Example: <code>/set_link 151807 https://t.me/FlyTon_Anime/123</code>\n"
-                  "ID kaise mile: anilist.co par anime kholo → link me jo number hai (anilist.co/anime/<b>151807</b>)")
+                  "How to find the ID: open the anime on anilist.co → the number in the link is the ID (anilist.co/anime/<b>151807</b>)")
 
 
 def cmd_set_link(chat_id, rest: str) -> None:
@@ -1337,7 +1337,7 @@ def cmd_set_link(chat_id, rest: str) -> None:
         tg_send(chat_id, _db_down_reply())
         return
     name = f"<b>{esc(title)}</b> " if title else ""
-    tg_send(chat_id, f"✅ <b>Link save ho gaya</b>\n🎬 {name}(ID <code>{aid}</code>)\n🔗 <code>{esc(url)}</code>\n{_db_line(res)}")
+    tg_send(chat_id, f"✅ <b>Link saved</b>\n🎬 {name}(ID <code>{aid}</code>)\n🔗 <code>{esc(url)}</code>\n{_db_line(res)}")
 
 
 def cmd_set_ep(chat_id, rest: str) -> None:
@@ -1353,7 +1353,7 @@ def cmd_set_ep(chat_id, rest: str) -> None:
     if res.get("error"):
         tg_send(chat_id, _db_down_reply())
         return
-    tg_send(chat_id, f"✅ <b>Episode link save ho gaya</b>\n🎬 ID <code>{aid}</code> • Episode <b>{ep}</b>\n"
+    tg_send(chat_id, f"✅ <b>Episode link saved</b>\n🎬 ID <code>{aid}</code> • Episode <b>{ep}</b>\n"
                      f"🔗 <code>{esc(url)}</code>\n{_db_line(res)}")
 
 
@@ -1362,23 +1362,23 @@ def cmd_del_link(chat_id, rest: str) -> None:
     aid = parse_anime_id(parts[0]) if parts else None
     ep = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else None
     if not aid:
-        tg_send(chat_id, "⚠️ <b>Use:</b> <code>/del_link [AniList ID]</code>  (poora link)\n"
-                         "ya <code>/del_link [AniList ID] [Episode no.]</code>  (sirf us episode ka)")
+        tg_send(chat_id, "⚠️ <b>Use:</b> <code>/del_link [AniList ID]</code>  (the whole link)\n"
+                         "or <code>/del_link [AniList ID] [Episode no.]</code>  (only that episode)")
         return
     res = STORE.delete(aid, ep)
     if res.get("error"):
         tg_send(chat_id, _db_down_reply())
         return
     if not res.get("removed"):
-        tg_send(chat_id, f"ℹ️ ID <code>{aid}</code>{' episode ' + str(ep) if ep else ''} ka koi saved link nahi mila.")
+        tg_send(chat_id, f"ℹ️ No saved link found for ID <code>{aid}</code>{' episode ' + str(ep) if ep else ''}.")
         return
-    tg_send(chat_id, f"🗑 <b>Hata diya</b> (ID <code>{aid}</code>{', episode ' + str(ep) if ep else ''})\n{_db_line(res)}")
+    tg_send(chat_id, f"🗑 <b>Removed</b> (ID <code>{aid}</code>{', episode ' + str(ep) if ep else ''})\n{_db_line(res)}")
 
 
 def cmd_links(chat_id) -> None:
     links = STORE.links
     if not links:
-        tg_send(chat_id, "📭 Abhi koi custom link save nahi hai.\n" + USAGE_SET_LINK)
+        tg_send(chat_id, "📭 No custom links are saved yet.\n" + USAGE_SET_LINK)
         return
     lines = []
     for k in sorted(links, key=lambda x: int(x)):
@@ -1403,25 +1403,25 @@ def build_status_text() -> str:
     yes, no, warn = "✅", "❌", "⚠️"
     out = [f"📊 <b>{esc(Config.APP_NAME)} — Status</b>", ""]
     out.append(f"{yes if Config.WEB_APP_URL_OK else no} <b>Web URL:</b> <code>{esc(Config.WEB_APP_URL or 'NOT SET')}</code>")
-    out.append(f"{yes if st['token_ok'] else no} <b>Bot:</b> {('@' + esc(BOT['username'])) if BOT['username'] else 'connect nahi hua'}")
+    out.append(f"{yes if st['token_ok'] else no} <b>Bot:</b> {('@' + esc(BOT['username'])) if BOT['username'] else 'not connected'}")
     info = _d(tg_call("getWebhookInfo").get("result"))
     wh_ok = info.get("url") == webhook_url()
-    out.append(f"{yes if wh_ok else no} <b>Webhook:</b> {'set' if wh_ok else 'SET NAHI'}"
+    out.append(f"{yes if wh_ok else no} <b>Webhook:</b> {'set' if wh_ok else 'NOT SET'}"
                f" • pending: {info.get('pending_update_count', 0)}")
     if info.get("last_error_message"):
         out.append(f"   {warn} last error: <code>{esc(str(info['last_error_message'])[:120])}</code>")
-    out.append(f"{yes if st['menu_ok'] else no} <b>Menu button:</b> {'linked' if st['menu_ok'] else 'set nahi hua'}")
+    out.append(f"{yes if st['menu_ok'] else no} <b>Menu button:</b> {'linked' if st['menu_ok'] else 'not set'}")
     out.append(f"{yes if Config.OWNER_IDS else no} <b>Owner ID:</b> {', '.join(map(str, Config.OWNER_IDS)) or 'NOT SET'}")
     if ls["persistent"]:
         for n in ls["nodes"]:
-            out.append(f"{yes if n['ok'] else no} <b>MongoDB {esc(n['label'])}:</b> {'connected' if n['ok'] else esc(n['err'] or 'connect nahi hua')}")
+            out.append(f"{yes if n['ok'] else no} <b>MongoDB {esc(n['label'])}:</b> {'connected' if n['ok'] else esc(n['err'] or 'not connected')}")
         out.append(f"   data: ver {ls['ver']} • loaded from {esc(ls['loaded_from'])}")
     else:
-        out.append(f"{warn} <b>MongoDB:</b> set nahi - links restart par ud jayenge!  (<code>MONGO_URI</code> daalo)")
+        out.append(f"{warn} <b>MongoDB:</b> not set - links will be lost on restart!  (add <code>MONGO_URI</code>)")
     out.append(f"🔗 <b>Custom links:</b> {ls['count']} (+{ls['episode_links']} episode links)")
     now = time.time()
     if ANILIST_STATE["blocked_until"] > now:
-        out.append(f"{warn} <b>AniList:</b> rate-limited, {int(ANILIST_STATE['blocked_until'] - now)}s me wapas")
+        out.append(f"{warn} <b>AniList:</b> rate-limited, retrying in {int(ANILIST_STATE['blocked_until'] - now)}s")
     else:
         out.append(f"{yes if not ANILIST_STATE['last_error'] else warn} <b>AniList:</b> "
                    f"{'ok' if not ANILIST_STATE['last_error'] else esc(ANILIST_STATE['last_error'][:100])} • calls: {ANILIST_STATE['calls']}")
@@ -1439,7 +1439,7 @@ def handle_update(upd: dict) -> None:
     if uid is not None:
         with _SEEN_LOCK:
             if uid in _SEEN_UPDATES:
-                return  # Telegram ne wahi update dobara bheja
+                return  # Telegram re-sent the same update
             _SEEN_UPDATES.append(uid)
     msg = upd.get("message")
     if not isinstance(msg, dict):
@@ -1461,16 +1461,16 @@ def handle_update(upd: dict) -> None:
     if cmd in ("start", "app", "help", "open"):
         tg_send(chat_id, welcome_text(), welcome_markup(private))
     elif cmd == "id":
-        tg_send(chat_id, f"🆔 <b>Tumhara Telegram ID:</b> <code>{user_id}</code>\n💬 <b>Chat ID:</b> <code>{chat_id}</code>\n\n"
-                         f"Ye number Render me <code>OWNER_ID</code> me daalna.")
+        tg_send(chat_id, f"🆔 <b>Your Telegram ID:</b> <code>{user_id}</code>\n💬 <b>Chat ID:</b> <code>{chat_id}</code>\n\n"
+                         f"Put this number in <code>OWNER_ID</code> in Render.")
     elif cmd in OWNER_COMMANDS:
         if not is_owner(user_id):
             if private:
                 if not Config.OWNER_IDS:
-                    tg_send(chat_id, "⚠️ OWNER_ID abhi set nahi hai. Render → Environment me <code>OWNER_ID</code> daalo "
-                                     "(apna ID <code>/id</code> se pata chalega), tab ye commands chalenge.")
+                    tg_send(chat_id, "⚠️ OWNER_ID is not set yet. Add <code>OWNER_ID</code> in Render → Environment "
+                                     "(you can find your ID with <code>/id</code>), then these commands will work.")
                 else:
-                    tg_send(chat_id, "⛔ Ye command sirf owner ke liye hai.")
+                    tg_send(chat_id, "⛔ This command is for the owner only.")
             return
         if cmd == "set_link":
             cmd_set_link(chat_id, rest)
@@ -1486,7 +1486,7 @@ def handle_update(upd: dict) -> None:
             with _CACHE_LOCK:
                 API_CACHE.clear()
             ANILIST_STATE["blocked_until"] = 0.0
-            tg_send(chat_id, "🔄 Cache saaf ho gaya. Agli baar anime data fresh aayega.")
+            tg_send(chat_id, "🔄 Cache cleared. The next request will fetch fresh anime data.")
 
 
 def _safe_eq(a: str, b: str) -> bool:
@@ -1505,7 +1505,7 @@ def telegram_webhook(token_path: str):
             handle_update(upd)
         except Exception:
             log("[Bot] handler error: " + _scrub(traceback.format_exc()))
-    return jsonify({"ok": True})  # hamesha 200: warna Telegram usi update ko baar-baar bhejta hai
+    return jsonify({"ok": True})  # always 200: otherwise Telegram keeps re-sending the same update
 
 
 # =============================================================================
@@ -1516,15 +1516,15 @@ _BOOT_LOCK = threading.Lock()
 
 
 def bootstrap() -> None:
-    """Ek baar: links load, DB-heal thread, Telegram setup thread."""
+    """Once: load links, start the DB-heal thread and the Telegram setup thread."""
     with _BOOT_LOCK:
         if _BOOT["done"]:
             return
         _BOOT["done"] = True
-    log(f"🚀 {Config.APP_NAME} start ho raha hai | web={Config.WEB_APP_URL or 'NOT SET'} | "
+    log(f"🚀 {Config.APP_NAME} is starting | web={Config.WEB_APP_URL or 'NOT SET'} | "
         f"bot={'yes' if Config.BOT_TOKEN else 'NO TOKEN'} | owners={len(Config.OWNER_IDS)} | mongo={len(Config.MONGO_URIS)}")
     if not Config.MONGO_URIS:
-        log("⚠️  MONGO_URI set nahi hai: /set_link wale links Render restart/sleep ke baad ud jayenge. Render → Environment me MONGO_URI daalo.")
+        log("⚠️  MONGO_URI is not set: links saved with /set_link will be lost after a Render restart/sleep. Add MONGO_URI in Render → Environment.")
     try:
         STORE.load()
     except Exception as e:  # pragma: no cover
@@ -1535,9 +1535,9 @@ def bootstrap() -> None:
 
 
 if __name__ != "__main__" and not os.environ.get("ANIMEW_NO_BOOT"):
-    bootstrap()  # gunicorn app:app se chalane par
+    bootstrap()  # when started with: gunicorn app:app
 
 if __name__ == "__main__":
     bootstrap()
-    log(f"Server {Config.HOST}:{Config.PORT} par chal raha hai (Flask 'development server' warning normal hai, error nahi)")
+    log(f"Server listening on {Config.HOST}:{Config.PORT} (Flask's 'development server' warning is normal, not an error)")
     app.run(host=Config.HOST, port=Config.PORT, debug=False, threaded=True, use_reloader=False)
