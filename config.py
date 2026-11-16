@@ -2,17 +2,18 @@
 """
 Anime-W  (Telegram Mini App)  -  settings
 =========================================
-Sab kuch Render ke "Environment" me env-variable se badal sakte ho. Kuch bhi galat/khali daaloge
-to app crash nahi karega - safe default use karega (pehle int("abc") se poora app crash ho jata tha).
+You can change everything from the Render "Environment" tab using environment variables. If you enter
+something wrong or empty, the app will not crash - it falls back to a safe default (the old code crashed
+completely on int("abc")).
 
-Zaroori env variables (sirf 2):
-    BOT_TOKEN   = Mini-App wale NAYE bot ka token (BotFather se)   <- Auto-Download-Bot wala token mat daalna
-    OWNER_ID    = tumhara Telegram numeric ID  (bot ko /id bhejoge to wo bata dega)
+Required environment variables (only 2):
+    BOT_TOKEN   = token of the NEW bot for this Mini App (from BotFather)   <- do NOT use the Auto-Download-Bot token
+    OWNER_ID    = your numeric Telegram ID  (send /id to the bot and it will tell you)
 
-Recommended (warna /set_link wale links restart par ud jaate hain):
-    MONGO_URI   = mongodb+srv://...   (wahi URI jo Auto-Download-Bot me use kar rahe ho chalega)
+Recommended (otherwise the links saved with /set_link are lost on restart):
+    MONGO_URI   = mongodb+srv://...   (the same URI you use in Auto-Download-Bot works)
 
-WEB_APP_URL ab zaroori nahi - Render khud RENDER_EXTERNAL_URL deta hai, app wahi utha leta hai.
+WEB_APP_URL is no longer required - Render provides RENDER_EXTERNAL_URL and the app picks it up.
 """
 import hashlib
 import json
@@ -21,7 +22,7 @@ import re
 import string
 from urllib.parse import urlparse
 
-try:  # optional: local .env file (Render par zaroorat nahi)
+try:  # optional: local .env file (not needed on Render)
     from dotenv import load_dotenv
 
     load_dotenv()
@@ -46,7 +47,7 @@ def _env_int(name: str, default: int, lo: int = None, hi: int = None) -> int:
     try:
         val = int(float(raw))
     except ValueError:
-        print(f"[Config Warning] {name}={raw!r} number nahi hai, default {default} use ho raha hai", flush=True)
+        print(f"[Config Warning] {name}={raw!r} is not a number, using default {default}", flush=True)
         return default
     if lo is not None:
         val = max(lo, val)
@@ -63,7 +64,7 @@ def _env_bool(name: str, default: bool) -> bool:
 
 
 def _id_list(raw: str) -> list:
-    """'123, 456 789' -> [123, 456, 789]  (galat cheezein chhod deta hai)."""
+    """'123, 456 789' -> [123, 456, 789]  (invalid entries are skipped)."""
     out = []
     for tok in re.split(r"[,\s;]+", raw or ""):
         tok = tok.strip()
@@ -76,9 +77,9 @@ def _id_list(raw: str) -> list:
 
 def tg_url(value: str, default: str = "") -> str:
     """
-    Kisi bhi form ko saaf https link banata hai:
+    Turns any form into a clean https link:
         @FlyTon_Anime -> https://t.me/FlyTon_Anime      t.me/x -> https://t.me/x      FlyTon_Anime -> https://t.me/FlyTon_Anime
-    Galat cheez ho to `default`. (Pehle '@name' daalne par Telegram poora /start message hi reject kar deta tha.)
+    Falls back to `default` if the value is invalid. (Before, entering '@name' made Telegram reject the whole /start message.)
     """
     v = _clean(value)
     if not v:
@@ -87,13 +88,13 @@ def tg_url(value: str, default: str = "") -> str:
         v = "https://t.me/" + v[1:]
     elif re.fullmatch(r"[A-Za-z0-9_]{4,32}", v):
         v = "https://t.me/" + v
-    # t.me / telegram.me / www.t.me  ->  hamesha https://t.me/...
+    # t.me / telegram.me / www.t.me  ->  always https://t.me/...
     v = re.sub(r"^(?:https?://)?(?:www\.)?(?:t|telegram)\.me/", "https://t.me/", v, flags=re.I)
     if not re.match(r"^https?://", v, re.I):
         return default
     parsed = urlparse(v)
     if not parsed.netloc or re.search(r"[\s<>\"'`\\\x00-\x1f]", v):
-        return default  # space / HTML / quote wale link button ya page ko tod dete hain
+        return default  # spaces / HTML / quotes in a link would break the button or the page
     return v
 
 
@@ -110,12 +111,12 @@ def _color(name: str, default: str) -> str:
     v = _env(name, default)
     if re.fullmatch(r"#[0-9a-fA-F]{3,8}", v) or re.fullmatch(r"rgba?\(\s*[\d\s.,%]+\)", v):
         return v
-    print(f"[Config Warning] {name}={v!r} sahi colour nahi hai, default use ho raha hai", flush=True)
+    print(f"[Config Warning] {name}={v!r} is not a valid colour, using the default", flush=True)
     return default
 
 
 def _web_url() -> str:
-    """WEB_APP_URL (ya Render ka RENDER_EXTERNAL_URL) -> 'https://xxx.onrender.com' (bina / ke, bina path ke)."""
+    """WEB_APP_URL (or Render's RENDER_EXTERNAL_URL) -> 'https://xxx.onrender.com' (no trailing /, no path)."""
     raw = _env("WEB_APP_URL") or _env("RENDER_EXTERNAL_URL")
     if not raw and _env("RENDER_EXTERNAL_HOSTNAME"):
         raw = "https://" + _env("RENDER_EXTERNAL_HOSTNAME")
@@ -162,7 +163,7 @@ def _load_stream_servers(default: list) -> list:
             tpl = str(item.get("embed_template", ""))
             names = {f for _, f, _, _ in string.Formatter().parse(tpl) if f}
             if not tpl.lower().startswith("https://") or not names <= _ALLOWED_TEMPLATE_FIELDS:
-                raise ValueError(f"server #{i + 1}: https:// se shuru hona chahiye, sirf {{slug}} {{anilist_id}} {{ep}} allowed")
+                raise ValueError(f"server #{i + 1}: must start with https://, only {{slug}} {{anilist_id}} {{ep}} are allowed")
             out.append({
                 "id": re.sub(r"[^a-z0-9_-]", "", str(item.get("id", f"srv{i + 1}")).lower()) or f"srv{i + 1}",
                 "name": str(item.get("name", f"Server {i + 1}"))[:40],
@@ -170,7 +171,7 @@ def _load_stream_servers(default: list) -> list:
             })
         return out
     except Exception as err:
-        print(f"[Config Warning] STREAM_SERVERS_JSON galat hai ({err}) - default servers use ho rahe hain", flush=True)
+        print(f"[Config Warning] STREAM_SERVERS_JSON is invalid ({err}) - using the default servers", flush=True)
         return default
 
 
@@ -195,13 +196,13 @@ class Config:
     # =========================================================================
     BOT_TOKEN = _env("BOT_TOKEN")
     OWNER_IDS = _id_list(os.environ.get("OWNER_ID", "") + " " + os.environ.get("OWNER_IDS", ""))
-    OWNER_ID = OWNER_IDS[0] if OWNER_IDS else 0  # purane code ke liye
+    OWNER_ID = OWNER_IDS[0] if OWNER_IDS else 0  # kept for the old code
 
-    # Render ka live URL. Khali chhod do - RENDER_EXTERNAL_URL apne-aap use hota hai.
+    # Your live Render URL. Leave it empty - RENDER_EXTERNAL_URL is used automatically.
     WEB_APP_URL = _web_url()
     WEB_APP_URL_OK = WEB_APP_URL.startswith("https://") and "." in WEB_APP_URL
 
-    # Webhook ke liye secret (BOT_TOKEN se banta hai, kahin save karne ki zaroorat nahi)
+    # Webhook secrets (derived from BOT_TOKEN, nothing to store anywhere)
     _seed = ("animew|" + BOT_TOKEN).encode("utf-8")
     WEBHOOK_PATH = hashlib.sha256(_seed).hexdigest()[:32]
     WEBHOOK_HEADER_TOKEN = hashlib.sha256(b"hdr|" + _seed).hexdigest()[:48]
@@ -215,7 +216,7 @@ class Config:
     CORS_ALLOWED_ORIGINS = _env("CORS_ALLOWED_ORIGINS", "*")
 
     # =========================================================================
-    # 4. DATABASE (links restart par na udein)
+    # 4. DATABASE (so links survive a restart)
     # =========================================================================
     MONGO_URIS = _mongo_uris()
     MONGO_DB_NAME = _env("MONGO_DB_NAME", "flyton_miniapp")
@@ -237,23 +238,29 @@ class Config:
     JIKAN_API_URL = "https://api.jikan.moe/v4"
     ANISKIP_API_URL = "https://api.aniskip.com/v2"
     ANILIST_TIMEOUT = _env_int("ANILIST_TIMEOUT", 12, 4, 40)
-    # AniList ki limit 90/min hai (kabhi kabhi 30/min). Hum apni taraf se 25/min se zyada call nahi karte.
+    # AniList's limit is 90/min (sometimes 30/min). We never make more than 25 calls/min ourselves.
     ANILIST_MAX_PER_MIN = _env_int("ANILIST_MAX_PER_MIN", 25, 5, 85)
 
     DEFAULT_AUDIO_BADGE = _env("DEFAULT_AUDIO_BADGE", "Hindi [Dual Audio]")
     DEFAULT_QUALITIES = ["480p", "720p", "1080p"]
 
-    # Embed players (3rd-party servers: hum inhe control nahi karte, kabhi bhi band ho sakte hain).
-    # Apne servers daalne ho to STREAM_SERVERS_JSON env me JSON list do; band karna ho to PLAYER_ENABLED=0.
+    # Embed players (3rd-party servers: we do not control them, they can go down at any time).
+    # To use your own servers, put a JSON list in the STREAM_SERVERS_JSON env variable; to turn the player off, set PLAYER_ENABLED=0.
+    #
+    # MegaPlay's correct format (from their official docs, https://megaplay.buzz/api):
+    #     /stream/ani/{anilist_id}/{episode}/{sub|dub}
+    # The old code used /stream/s-2/{anilist_id}/{ep}, which is the HiAnime episode-ID format, so
+    # Server 2 never worked. It now works directly with the AniList ID (no need to guess a slug).
     _DEFAULT_STREAM_SERVERS = [
-        {"id": "vidstreaming", "name": "Server 1 (Fast HD)", "embed_template": "https://2anime.xyz/embed/{slug}-episode-{ep}"},
-        {"id": "megaplay", "name": "Server 2 (Multi-Quality)", "embed_template": "https://megaplay.buzz/stream/s-2/{anilist_id}/{ep}"},
-        {"id": "vidsrc", "name": "Server 3 (Backup HD)", "embed_template": "https://vidsrc.icu/embed/anime/{anilist_id}/{ep}/0"},
+        {"id": "megaplay-sub", "name": "Server 1 (Sub)", "embed_template": "https://megaplay.buzz/stream/ani/{anilist_id}/{ep}/sub"},
+        {"id": "megaplay-dub", "name": "Server 2 (Dub)", "embed_template": "https://megaplay.buzz/stream/ani/{anilist_id}/{ep}/dub"},
+        {"id": "vidsrc", "name": "Server 3 (Backup)", "embed_template": "https://vidsrc.icu/embed/anime/{anilist_id}/{ep}/0"},
+        {"id": "vidstreaming", "name": "Server 4 (Backup 2)", "embed_template": "https://2anime.xyz/embed/{slug}-episode-{ep}"},
     ]
     STREAM_SERVERS = _load_stream_servers(_DEFAULT_STREAM_SERVERS)
     PLAYER_ENABLED = bool(STREAM_SERVERS)
 
-    # Cache (seconds): Render fast rehta hai aur AniList ki limit nahi tootti
+    # Cache (seconds): keeps Render fast and stays under AniList's rate limit
     CACHE_TTL_SECONDS = _env_int("CACHE_TTL_SECONDS", 900, 30, 86400)
     DETAIL_TTL_SECONDS = _env_int("DETAIL_TTL_SECONDS", 21600, 60, 172800)
     STALE_MAX_SECONDS = _env_int("STALE_MAX_SECONDS", 86400, 600, 604800)
