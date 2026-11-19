@@ -22,12 +22,13 @@ import traceback
 import urllib.error
 import urllib.request
 from collections import deque
+from urllib.parse import urlparse
 
 from flask import Flask, Response, jsonify, request
 from werkzeug.exceptions import HTTPException
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-from config import Config, tg_url
+from config import LANG_CODES, LANG_LABELS, LANGUAGES, Config, norm_lang, tg_url
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 INDEX_PATH = os.path.join(BASE_DIR, "index.html")
@@ -172,7 +173,7 @@ def invalidate_dub_caches() -> None:
 # =============================================================================
 class LinkStore:
     """
-    {"151807": {"telegram_url": "...", "episodes": {"1": "..."}, "title": "Solo Leveling"}}
+    {"151807": {"telegram_url": "...", "episodes": {"1": "..."}, "langs": {"hi": "..."}, "title": "Solo Leveling"}}
     * If MONGO_URI(s) are set, every change is saved to all clusters; the newest `ver` wins.
     * A cluster that is down is skipped and healed when it comes back.
     * If a DB is configured but none can be read -> writing is blocked (otherwise old data could be overwritten).
@@ -214,6 +215,9 @@ class LinkStore:
                 "telegram_url": url if isinstance(url, str) else "",
                 "episodes": {str(a): b for a, b in eps.items() if isinstance(b, str) and str(a).isdigit()},
             }
+            langs = {str(a): b for a, b in _d(v.get("langs")).items() if str(a) in LANG_CODES and isinstance(b, str) and b}
+            if langs:  # only written when used, so old data stays exactly as it was
+                rec["langs"] = langs
             if isinstance(v.get("title"), str):
                 rec["title"] = v["title"][:120]
             out[str(k)] = rec
@@ -425,7 +429,22 @@ class LinkStore:
             new[str(aid)] = rec
             return self._commit(new)
 
-    def delete(self, aid: int, ep: int = None) -> dict:
+    def set_lang(self, aid: int, lang: str, url: str, title: str = None) -> dict:
+        """The Telegram link for ONE language (hi / ta / te / en / ja) of an anime."""
+        with self._wlock:
+            if not self.can_write():
+                return {"error": "db_down"}
+            if lang not in LANG_CODES:
+                return {"error": "bad_lang"}
+            new = copy.deepcopy(self.links)
+            rec = new.get(str(aid)) or {"telegram_url": "", "episodes": {}}
+            rec.setdefault("langs", {})[lang] = url
+            if title and not rec.get("title"):
+                rec["title"] = title[:120]
+            new[str(aid)] = rec
+            return self._commit(new)
+
+    def delete(self, aid: int, ep: int = None, lang: str = None) -> dict:
         with self._wlock:
             if not self.can_write():
                 return {"error": "db_down"}
@@ -433,12 +452,21 @@ class LinkStore:
             rec = new.get(str(aid))
             if not rec:
                 return {"removed": False, "persisted": 0, "total": len(self._nodes)}
-            if ep is None:
+            if lang is not None:
+                if lang in _d(rec.get("langs")):
+                    del rec["langs"][lang]
+                    if not rec["langs"]:
+                        del rec["langs"]
+                else:
+                    return {"removed": False, "persisted": 0, "total": len(self._nodes)}
+            elif ep is None:
                 del new[str(aid)]
             elif str(ep) in rec.get("episodes", {}):
                 del rec["episodes"][str(ep)]
             else:
                 return {"removed": False, "persisted": 0, "total": len(self._nodes)}
+            if str(aid) in new and not rec.get("telegram_url") and not rec.get("episodes") and not rec.get("langs"):
+                del new[str(aid)]  # nothing left in this record - do not keep an empty "link"
             res = self._commit(new)
             res["removed"] = True
             return res
@@ -452,6 +480,7 @@ class LinkStore:
             "nodes": [{"label": n["label"], "ok": n["ok"], "ver": n["ver"], "err": n["err"]} for n in self._nodes],
             "count": len(self.links),
             "episode_links": sum(len(_d(v.get("episodes"))) for v in self.links.values()),
+            "language_links": sum(len(_d(v.get("langs"))) for v in self.links.values()),
         }
 
 
@@ -738,6 +767,10 @@ def public_config() -> dict:
         "default_audio": Config.DEFAULT_AUDIO_BADGE,
         "qualities": Config.DEFAULT_QUALITIES,
         "player_enabled": Config.PLAYER_ENABLED,
+        "show_tg_links": Config.SHOW_TG_LINKS,
+        "languages": [{"code": c, "label": n} for c, n in LANGUAGES],
+        "default_lang": Config.DEFAULT_LANG,
+        "hls_js_url": Config.HLS_JS_URL,
         "theme": {
             "primary": Config.THEME_PRIMARY_COLOR,
             "secondary": Config.THEME_SECONDARY_COLOR,
@@ -1005,28 +1038,57 @@ def api_anime_detail(anime_id: int):
         "anime_news_url": Config.NEWS_CHANNEL_URL,
         "all_backup_url": Config.BACKUP_CHANNEL_URL,
     }
+    info["lang_links"] = dict(_d(link.get("langs")))  # {"hi": "https://t.me/..."}: the owner's Telegram link per language
     info["stale"] = stale
     return jsonify(info)
 
 
+def _vip_server(url: str) -> dict:
+    """An episode link saved with /set_ep that is NOT a Telegram link: played by our own player if it is a video
+    file (.m3u8 / .mp4 / .webm), otherwise shown in an iframe."""
+    path = urlparse(url).path.lower()
+    kind = "hls" if path.endswith(".m3u8") else "mp4" if path.endswith((".mp4", ".webm")) else "embed"
+    srv = {"id": "custom_vip", "name": "VIP Server", "kind": kind, "lang": "multi", "type": "sub", "sub_lang": "",
+           "sandbox": True}
+    srv["embed_url" if kind == "embed" else "src"] = url
+    if kind != "embed":
+        srv["subs"] = []
+    return srv
+
+
 @app.route("/api/stream/<int:anime_id>/<int:ep_num>")
 def api_episode_stream(anime_id: int, ep_num: int):
-    """Embed servers + Telegram Watch/Download links (for that episode)."""
+    """Video servers (iframe or direct) + the Telegram links for that episode + which languages exist."""
     slug = re.sub(r"[^a-z0-9-]", "", (request.args.get("slug") or "anime").lower())[:80] or "anime"
     ep_num = max(1, min(ep_num, MAX_EPISODES))
     link = _d(STORE.get(anime_id))
     custom_ep_url = _d(link.get("episodes")).get(str(ep_num))
     tg_link = custom_ep_url or link.get("telegram_url") or Config.MAIN_CHANNEL_URL
+    fill = {"slug": slug, "anilist_id": anime_id, "ep": ep_num}
 
     servers = []
-    if custom_ep_url and "t.me/" not in custom_ep_url and custom_ep_url.lower().startswith("https://") and Config.PLAYER_ENABLED:
-        servers.append({"id": "custom_vip", "name": f"⚡ {Config.APP_NAME} VIP Server", "embed_url": custom_ep_url})
+    if (custom_ep_url and "t.me/" not in custom_ep_url.lower() and custom_ep_url.lower().startswith("https://")
+            and Config.PLAYER_ENABLED):
+        servers.append(_vip_server(custom_ep_url))
     for srv in Config.STREAM_SERVERS:
-        servers.append({"id": srv["id"], "name": srv["name"],
-                        "embed_url": srv["embed_template"].format(slug=slug, anilist_id=anime_id, ep=ep_num)})
+        item = {"id": srv["id"], "name": srv["name"], "kind": srv["kind"], "lang": srv["lang"], "type": srv["type"],
+                "sub_lang": srv["sub_lang"], "sandbox": srv["sandbox"]}
+        if srv["kind"] == "embed":
+            item["embed_url"] = srv["embed_template"].format(**fill)
+        else:
+            item["src"] = srv["src_template"].format(**fill)
+            item["subs"] = [{"lang": s["lang"], "label": s["label"], "url": s["src_template"].format(**fill)}
+                            for s in srv["subs"]]
+        servers.append(item)
+
+    lang_links = _d(link.get("langs"))
+    languages = {code: {"label": LANG_LABELS[code],
+                        "servers": sum(1 for s in servers if s["lang"] == code),
+                        "telegram": lang_links.get(code, "")}
+                 for code, _name in LANGUAGES}
     return jsonify({
         "anime_id": anime_id, "episode": ep_num, "audio": Config.DEFAULT_AUDIO_BADGE,
-        "qualities": Config.DEFAULT_QUALITIES, "servers": servers,
+        "qualities": Config.DEFAULT_QUALITIES, "servers": servers, "languages": languages,
         "telegram_watch_url": tg_link, "news_url": Config.NEWS_CHANNEL_URL,
         "backup_url": Config.BACKUP_CHANNEL_URL, "credit": Config.CREDIT_TEXT,
     })
@@ -1321,23 +1383,30 @@ def _db_down_reply() -> str:
 
 USAGE_SET_LINK = ("<b>Use:</b> <code>/set_link [AniList ID or AniList link] [Telegram link]</code>\n"
                   "Example: <code>/set_link 151807 https://t.me/FlyTon_Anime/123</code>\n"
+                  "<b>For one language:</b> <code>/set_link [ID] [hindi|tamil|telugu|english|japanese] [link]</code>\n"
+                  "Example: <code>/set_link 151807 hindi https://t.me/FlyTon_Anime/456</code>\n"
                   "How to find the ID: open the anime on anilist.co → the number in the link is the ID (anilist.co/anime/<b>151807</b>)")
 
 
 def cmd_set_link(chat_id, rest: str) -> None:
-    parts = rest.split(None, 1)
+    parts = rest.split(None, 2)
     aid = parse_anime_id(parts[0]) if parts else None
-    url = clean_link(parts[1]) if len(parts) > 1 else ""
+    lang = norm_lang(parts[1], "") if len(parts) > 2 else ""  # a language word between the ID and the link
+    if lang:
+        url = clean_link(parts[2])
+    else:
+        url = clean_link(rest.split(None, 1)[1]) if len(parts) > 1 else ""
     if not aid or not url:
         tg_send(chat_id, "⚠️ " + USAGE_SET_LINK)
         return
     title = lookup_title(aid)
-    res = STORE.set_link(aid, url, title)
+    res = STORE.set_lang(aid, lang, url, title) if lang else STORE.set_link(aid, url, title)
     if res.get("error"):
         tg_send(chat_id, _db_down_reply())
         return
     name = f"<b>{esc(title)}</b> " if title else ""
-    tg_send(chat_id, f"✅ <b>Link saved</b>\n🎬 {name}(ID <code>{aid}</code>)\n🔗 <code>{esc(url)}</code>\n{_db_line(res)}")
+    what = f"{LANG_LABELS[lang]} link saved" if lang else "Link saved"
+    tg_send(chat_id, f"✅ <b>{what}</b>\n🎬 {name}(ID <code>{aid}</code>)\n🔗 <code>{esc(url)}</code>\n{_db_line(res)}")
 
 
 def cmd_set_ep(chat_id, rest: str) -> None:
@@ -1361,18 +1430,21 @@ def cmd_del_link(chat_id, rest: str) -> None:
     parts = rest.split()
     aid = parse_anime_id(parts[0]) if parts else None
     ep = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else None
-    if not aid:
+    lang = norm_lang(parts[1], "") if len(parts) > 1 and not parts[1].isdigit() else ""
+    if not aid or (len(parts) > 1 and ep is None and not lang):
         tg_send(chat_id, "⚠️ <b>Use:</b> <code>/del_link [AniList ID]</code>  (the whole link)\n"
-                         "or <code>/del_link [AniList ID] [Episode no.]</code>  (only that episode)")
+                         "or <code>/del_link [AniList ID] [Episode no.]</code>  (only that episode)\n"
+                         "or <code>/del_link [AniList ID] [hindi|tamil|telugu|english|japanese]</code>  (only that language)")
         return
-    res = STORE.delete(aid, ep)
+    res = STORE.delete(aid, ep, lang or None)
     if res.get("error"):
         tg_send(chat_id, _db_down_reply())
         return
+    what = f" episode {ep}" if ep else (f" {LANG_LABELS[lang]} link" if lang else "")
     if not res.get("removed"):
-        tg_send(chat_id, f"ℹ️ No saved link found for ID <code>{aid}</code>{' episode ' + str(ep) if ep else ''}.")
+        tg_send(chat_id, f"ℹ️ No saved link found for ID <code>{aid}</code>{what}.")
         return
-    tg_send(chat_id, f"🗑 <b>Removed</b> (ID <code>{aid}</code>{', episode ' + str(ep) if ep else ''})\n{_db_line(res)}")
+    tg_send(chat_id, f"🗑 <b>Removed</b> (ID <code>{aid}</code>{',' + what if what else ''})\n{_db_line(res)}")
 
 
 def cmd_links(chat_id) -> None:
@@ -1384,8 +1456,10 @@ def cmd_links(chat_id) -> None:
     for k in sorted(links, key=lambda x: int(x)):
         rec = links[k]
         eps = len(_d(rec.get("episodes")))
+        langs = sorted(_d(rec.get("langs")))
         title = esc(rec.get("title") or "")
-        lines.append(f"• <code>{k}</code> {title}{' (+' + str(eps) + ' ep)' if eps else ''}\n   {esc(rec.get('telegram_url') or '-')}")
+        extra = (f" (+{eps} ep)" if eps else "") + (f" [{', '.join(langs)}]" if langs else "")
+        lines.append(f"• <code>{k}</code> {title}{extra}\n   {esc(rec.get('telegram_url') or '-')}")
     chunk, size = [], 0
     header = f"📚 <b>Saved links: {len(links)}</b>\n\n"
     for line in lines:
@@ -1418,7 +1492,7 @@ def build_status_text() -> str:
         out.append(f"   data: ver {ls['ver']} • loaded from {esc(ls['loaded_from'])}")
     else:
         out.append(f"{warn} <b>MongoDB:</b> not set - links will be lost on restart!  (add <code>MONGO_URI</code>)")
-    out.append(f"🔗 <b>Custom links:</b> {ls['count']} (+{ls['episode_links']} episode links)")
+    out.append(f"🔗 <b>Custom links:</b> {ls['count']} (+{ls['episode_links']} episode links, {ls['language_links']} language links)")
     now = time.time()
     if ANILIST_STATE["blocked_until"] > now:
         out.append(f"{warn} <b>AniList:</b> rate-limited, retrying in {int(ANILIST_STATE['blocked_until'] - now)}s")
