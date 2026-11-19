@@ -147,7 +147,101 @@ def _mongo_uris() -> list:
     return out
 
 
+# --------------------------------------------------------------------------- languages
+# Audio / subtitle languages the player can offer. The app never invents a language: an option is only
+# switched on when a server (or an owner Telegram link) for it really exists.
+LANGUAGES = [
+    ("ja", "Japanese"),
+    ("en", "English"),
+    ("hi", "Hindi"),
+    ("ta", "Tamil"),
+    ("te", "Telugu"),
+]
+LANG_CODES = {code for code, _ in LANGUAGES}
+LANG_LABELS = dict(LANGUAGES)
+_LANG_ALIASES = {
+    "japanese": "ja", "jp": "ja", "jpn": "ja",
+    "english": "en", "eng": "en",
+    "hindi": "hi", "hin": "hi",
+    "tamil": "ta", "tam": "ta",
+    "telugu": "te", "tel": "te",
+}
+
+
+def norm_lang(value, default: str = "") -> str:
+    """'Hindi' / 'hin' / 'hi' -> 'hi'.  Unknown values return `default`."""
+    v = _clean(str(value if value is not None else "")).lower()
+    if v in LANG_CODES:
+        return v
+    return _LANG_ALIASES.get(v, default)
+
+
 _ALLOWED_TEMPLATE_FIELDS = {"slug", "anilist_id", "ep"}
+_SERVER_KINDS = ("embed", "hls", "mp4")
+
+
+def _check_template(tpl: str, label: str) -> str:
+    names = {f for _, f, _, _ in string.Formatter().parse(tpl) if f}
+    if not tpl.lower().startswith("https://") or not names <= _ALLOWED_TEMPLATE_FIELDS or re.search(r"[\s<>\"'`\\\x00-\x1f]", tpl):
+        raise ValueError(f"{label}: must start with https://, only {{slug}} {{anilist_id}} {{ep}} are allowed")
+    return tpl
+
+
+def _parse_server(item, i: int) -> dict:
+    if not isinstance(item, dict):
+        raise ValueError(f"server #{i + 1}: must be an object")
+    label = f"server #{i + 1}"
+    kind = str(item.get("kind") or ("embed" if item.get("embed_template") else "")).strip().lower()
+    if kind not in _SERVER_KINDS:
+        raise ValueError(f"{label}: kind must be one of {', '.join(_SERVER_KINDS)}")
+    if kind == "embed":
+        tpl = _check_template(str(item.get("embed_template") or ""), label)
+    else:
+        tpl = _check_template(str(item.get("src_template") or ""), label)
+    sid = re.sub(r"[^a-z0-9_-]", "", str(item.get("id", f"srv{i + 1}")).lower()) or f"srv{i + 1}"
+    name = str(item.get("name", f"Server {i + 1}"))[:40]
+
+    # Language of the AUDIO. Older settings had no "lang": a name/id with "dub" means English, otherwise Japanese.
+    raw_lang = str(item.get("lang") or "").strip().lower()
+    lang = "multi" if raw_lang == "multi" else norm_lang(raw_lang, "")
+    typ = str(item.get("type") or "").strip().lower()
+    if typ not in ("sub", "dub"):
+        typ = "dub" if "dub" in (sid + " " + name).lower() else "sub"
+    if not lang:
+        lang = "en" if typ == "dub" else "ja"
+
+    out = {
+        "id": sid,
+        "name": name,
+        "kind": kind,
+        "lang": lang,                                     # audio language ('multi' = other / unknown)
+        "type": typ,                                      # 'sub' or 'dub'
+        "sub_lang": norm_lang(item.get("sub_lang"), ""),   # subtitle language that is built into the video (if known)
+        "sandbox": _bool_value(item.get("sandbox"), True),  # embed only: block pop-ups / new tabs / redirects
+        "subs": [],
+    }
+    out["embed_template" if kind == "embed" else "src_template"] = tpl
+    if kind != "embed":
+        for j, sub in enumerate(item.get("subs") or []):
+            if not isinstance(sub, dict):
+                raise ValueError(f"{label}: subs #{j + 1} must be an object")
+            slang = norm_lang(sub.get("lang"), "")
+            if not slang:
+                raise ValueError(f"{label}: subs #{j + 1} needs lang = ja / en / hi / ta / te")
+            out["subs"].append({
+                "lang": slang,
+                "label": str(sub.get("label") or LANG_LABELS[slang])[:30],
+                "src_template": _check_template(str(sub.get("src_template") or ""), f"{label} subs #{j + 1}"),
+            })
+    return out
+
+
+def _bool_value(value, default: bool) -> bool:
+    if value is None or value == "":
+        return default
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() in ("1", "true", "yes", "on", "y")
 
 
 def _load_stream_servers(default: list) -> list:
@@ -155,24 +249,23 @@ def _load_stream_servers(default: list) -> list:
         return []
     raw = _env("STREAM_SERVERS_JSON")
     if not raw:
-        return default
+        return [_parse_server(item, i) for i, item in enumerate(default)]
     try:
         data = json.loads(raw)
-        out = []
-        for i, item in enumerate(data if isinstance(data, list) else []):
-            tpl = str(item.get("embed_template", ""))
-            names = {f for _, f, _, _ in string.Formatter().parse(tpl) if f}
-            if not tpl.lower().startswith("https://") or not names <= _ALLOWED_TEMPLATE_FIELDS:
-                raise ValueError(f"server #{i + 1}: must start with https://, only {{slug}} {{anilist_id}} {{ep}} are allowed")
-            out.append({
-                "id": re.sub(r"[^a-z0-9_-]", "", str(item.get("id", f"srv{i + 1}")).lower()) or f"srv{i + 1}",
-                "name": str(item.get("name", f"Server {i + 1}"))[:40],
-                "embed_template": tpl,
-            })
-        return out
+        if not isinstance(data, list):
+            raise ValueError("it must be a JSON list")
+        return [_parse_server(item, i) for i, item in enumerate(data)]
     except Exception as err:
         print(f"[Config Warning] STREAM_SERVERS_JSON is invalid ({err}) - using the default servers", flush=True)
-        return default
+        return [_parse_server(item, i) for i, item in enumerate(default)]
+
+
+def _https_url(name: str, default: str) -> str:
+    v = _env(name, default)
+    if v.lower().startswith("https://") and not re.search(r"[\s<>\"'`\\\x00-\x1f]", v):
+        return v
+    print(f"[Config Warning] {name}={v!r} must be an https:// link, using the default", flush=True)
+    return default
 
 
 class Config:
@@ -226,10 +319,15 @@ class Config:
     # =========================================================================
     # 5. THEME
     # =========================================================================
-    THEME_PRIMARY_COLOR = _color("THEME_PRIMARY_COLOR", "#ff2a5f")
-    THEME_SECONDARY_COLOR = _color("THEME_SECONDARY_COLOR", "#7c3aed")
-    THEME_BG_COLOR = _color("THEME_BG_COLOR", "#07080d")
-    THEME_GLASS_CARD = _color("THEME_GLASS_CARD", "rgba(18, 22, 36, 0.78)")
+    # Calm violet instead of the old loud red. Any of these can still be changed from Render -> Environment.
+    THEME_PRIMARY_COLOR = _color("THEME_PRIMARY_COLOR", "#8b7bff")
+    THEME_SECONDARY_COLOR = _color("THEME_SECONDARY_COLOR", "#5b4bdb")
+    THEME_BG_COLOR = _color("THEME_BG_COLOR", "#08090f")
+    THEME_GLASS_CARD = _color("THEME_GLASS_CARD", "#12141e")
+
+    # Small Telegram icon at the top of an anime page (it opens that anime's Telegram links). It only appears
+    # for anime that have a link saved with /set_link or /set_ep. SHOW_TG_LINKS=0 hides it completely.
+    SHOW_TG_LINKS = _env_bool("SHOW_TG_LINKS", True)
 
     # =========================================================================
     # 6. ANIME DATA (AniList) & PLAYER
@@ -244,21 +342,45 @@ class Config:
     DEFAULT_AUDIO_BADGE = _env("DEFAULT_AUDIO_BADGE", "Hindi [Dual Audio]")
     DEFAULT_QUALITIES = ["480p", "720p", "1080p"]
 
-    # Embed players (3rd-party servers: we do not control them, they can go down at any time).
-    # To use your own servers, put a JSON list in the STREAM_SERVERS_JSON env variable; to turn the player off, set PLAYER_ENABLED=0.
+    # --- Video servers -------------------------------------------------------------------------------------------
+    # Two kinds of server:
+    #   "embed" = a third-party player page shown in an iframe. We do not control it (ads, speed, languages and
+    #             subtitles are decided by that player). The app blocks its pop-ups / new tabs with an iframe sandbox.
+    #   "hls" / "mp4" = a direct video file played by the app's OWN player: no ads at all, real audio / subtitle /
+    #             quality menus. Use it only for video you have the right to stream.
     #
-    # MegaPlay's correct format (from their official docs, https://megaplay.buzz/api):
-    #     /stream/ani/{anilist_id}/{episode}/{sub|dub}
-    # The old code used /stream/s-2/{anilist_id}/{ep}, which is the HiAnime episode-ID format, so
-    # Server 2 never worked. It now works directly with the AniList ID (no need to guess a slug).
+    # Put your own list in the STREAM_SERVERS_JSON environment variable (Render -> Environment). Example:
+    #   [
+    #     {"id": "hi-main", "name": "Hindi HD", "kind": "hls", "lang": "hi", "type": "dub",
+    #      "src_template": "https://cdn.example.com/{anilist_id}/hi/{ep}/index.m3u8",
+    #      "subs": [{"lang": "en", "label": "English", "src_template": "https://cdn.example.com/{anilist_id}/en/{ep}.vtt"}]},
+    #     {"id": "ja-embed", "name": "Server 1 (Sub)", "kind": "embed", "lang": "ja", "type": "sub",
+    #      "embed_template": "https://player.example.com/{anilist_id}/{ep}"}
+    #   ]
+    # Fields: lang = ja | en | hi | ta | te | multi     type = sub | dub     sandbox = true | false (embed only)
+    # Allowed placeholders: {anilist_id} {ep} {slug}.   To turn the player off completely set PLAYER_ENABLED=0.
+    #
+    # MegaPlay's format (from their docs, https://megaplay.buzz/api):  /stream/ani/{anilist_id}/{episode}/{sub|dub}
     _DEFAULT_STREAM_SERVERS = [
-        {"id": "megaplay-sub", "name": "Server 1 (Sub)", "embed_template": "https://megaplay.buzz/stream/ani/{anilist_id}/{ep}/sub"},
-        {"id": "megaplay-dub", "name": "Server 2 (Dub)", "embed_template": "https://megaplay.buzz/stream/ani/{anilist_id}/{ep}/dub"},
-        {"id": "vidsrc", "name": "Server 3 (Backup)", "embed_template": "https://vidsrc.icu/embed/anime/{anilist_id}/{ep}/0"},
-        {"id": "vidstreaming", "name": "Server 4 (Backup 2)", "embed_template": "https://2anime.xyz/embed/{slug}-episode-{ep}"},
+        {"id": "megaplay-sub", "name": "Server 1 (Sub)", "kind": "embed", "lang": "ja", "type": "sub",
+         "embed_template": "https://megaplay.buzz/stream/ani/{anilist_id}/{ep}/sub"},
+        {"id": "megaplay-dub", "name": "Server 2 (Dub)", "kind": "embed", "lang": "en", "type": "dub",
+         "embed_template": "https://megaplay.buzz/stream/ani/{anilist_id}/{ep}/dub"},
+        {"id": "vidsrc", "name": "Server 3 (Backup)", "kind": "embed", "lang": "multi",
+         "embed_template": "https://vidsrc.icu/embed/anime/{anilist_id}/{ep}/0"},
+        {"id": "vidstreaming", "name": "Server 4 (Backup 2)", "kind": "embed", "lang": "multi",
+         "embed_template": "https://2anime.xyz/embed/{slug}-episode-{ep}"},
     ]
     STREAM_SERVERS = _load_stream_servers(_DEFAULT_STREAM_SERVERS)
     PLAYER_ENABLED = bool(STREAM_SERVERS)
+
+    # Which audio language is selected first on an anime page: auto | ja | en | hi | ta | te
+    #   auto = the first language that has a playable server, in this order: hi, ta, te, en, ja
+    _dl = _env("DEFAULT_LANG", "auto").lower()
+    DEFAULT_LANG = _dl if _dl == "auto" or _dl in LANG_CODES else (norm_lang(_dl, "") or "auto")
+
+    # hls.js is only downloaded when a direct HLS (.m3u8) server is played.
+    HLS_JS_URL = _https_url("HLS_JS_URL", "https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.13/hls.min.js")
 
     # Cache (seconds): keeps Render fast and stays under AniList's rate limit
     CACHE_TTL_SECONDS = _env_int("CACHE_TTL_SECONDS", 900, 30, 86400)
