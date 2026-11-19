@@ -656,8 +656,11 @@ def normalize_anime(media, detail: bool = False) -> dict:
     studios = [s["name"] for s in _l(_d(media.get("studios")).get("nodes")) if isinstance(s, dict) and s.get("name")]
 
     link = STORE.get(aid)
-    is_hindi = bool(link) or (aid in HINDI_DUB_SEEDS and seed_matches(aid, media))
-    tg_link = _d(link).get("telegram_url") or Config.MAIN_CHANNEL_URL
+    rec = _d(link)
+    # A record that only holds Tamil / Telugu / English / Japanese links is not a Hindi dub (no "HINDI" badge for it).
+    hindi_link = bool(rec) and (bool(rec.get("telegram_url")) or bool(_d(rec.get("episodes"))) or "hi" in _d(rec.get("langs")))
+    is_hindi = hindi_link or (aid in HINDI_DUB_SEEDS and seed_matches(aid, media))
+    tg_link = rec.get("telegram_url") or Config.MAIN_CHANNEL_URL
 
     avg = media.get("averageScore")
     score = round(avg / 10.0, 1) if isinstance(avg, (int, float)) and avg > 0 else None
